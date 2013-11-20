@@ -1,0 +1,33 @@
+{
+  "name": "usco-assetmanager",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/usco/usco-assetmanager.git"
+  },
+  "directories": {
+    "lib": "./lib"
+  },
+  "dependencies": {
+    "q": "~0.9.6",
+    "coffee-script": "~1.6.3",
+    "logerize": "0.0.2",
+  },
+  "devDependencies": {
+    "jasmine-node": "1.10.2",
+    "browserify": "git://github.com/kaosat-dev/node-browserify.git",
+    "coffeeify": "",
+    "coffeeify-redux": "0.1.0",
+    "watchify": "0.1.0",
+    "beefy": "",
+    "browserify-shim": "~2.0.8",
+    "uglify-js": "~2.4.0",
+    "logerize": "0.0.2",
+  },
+  "scripts": {
+    "test": "jasmine-node --coffee specs/",
+    "start": "beefy --live src/kernel.coffee:coffeescad-kernel.js 9080 -- --extension '.coffee' -t coffeeify & jasmine-node specs/ --color --verbose --coffee --autotest --watch src",
+    "release": "browserify src/kernel.coffee -t coffeeify --extension '.coffee' | uglifyjs -c > bundle.js"
+  }
+}
