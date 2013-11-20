@@ -1,7 +1,7 @@
 'use strict'
 path = require('path')
 Q = require("q")
-logger = require("../logger")
+logger = require("../logger.coffee")
 logger.level = "info"
 
 #TODO: add loading from git repos , with optional tag, commit, hash, branch etc (similar to npm dependencies)

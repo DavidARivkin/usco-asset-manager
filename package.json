@@ -12,7 +12,7 @@
   "dependencies": {
     "q": "~0.9.6",
     "coffee-script": "~1.6.3",
-    "logerize": "0.0.2",
+    "logerize": "0.0.2"
   },
   "devDependencies": {
     "jasmine-node": "1.10.2",
@@ -23,11 +23,12 @@
     "beefy": "",
     "browserify-shim": "~2.0.8",
     "uglify-js": "~2.4.0",
-    "logerize": "0.0.2",
+    "logerize": "0.0.2"
   },
   "scripts": {
     "test": "jasmine-node --coffee specs/",
     "start": "beefy --live src/kernel.coffee:coffeescad-kernel.js 9080 -- --extension '.coffee' -t coffeeify & jasmine-node specs/ --color --verbose --coffee --autotest --watch src",
-    "release": "browserify src/kernel.coffee -t coffeeify --extension '.coffee' | uglifyjs -c > bundle.js"
+    "release": "browserify --standalone AssetManager src/assetManager.coffee -t coffeeify --extension '.coffee' > assetManager.js
+"
   }
 }

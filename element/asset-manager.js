@@ -1,8 +1,6 @@
 Polymer('asset-manager', {
-
-  _assetManager : new AssetManager();
-
   created: function() {
+    this._assetManager = new AssetManager();
   },
   ready:function(){
   },

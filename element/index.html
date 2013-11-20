@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <title>AssetManager</title>
+    <script src="polymer.min.js"></script>
+    <link rel="import" href="asset-manager.html">
+  </head>
+  <body>
+    <asset-manager> </asset-manager>
+    <script>
+      document.addEventListener('WebComponentsReady', function() {
+        var assetManager = document.querySelector('asset-manager');
+        console.log("here", assetManager);
+        //assetManager.load("bal");
+        //assetManager.load("http://localhost/bla.stl");
+      })
+    </script>
+  </body>
+</html>
