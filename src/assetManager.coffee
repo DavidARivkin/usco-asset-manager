@@ -1,6 +1,6 @@
 'use strict'
 path = require('path')
-Q = require("q")
+Q = require("../q")
 logger = require("../logger.coffee")
 logger.level = "info"
 
@@ -42,6 +42,11 @@ class AssetManager
     
     return [ storeName, fileName ] 
   
+  _testDeferred:(fileName)->
+    deferred = Q.defer()
+    deferred.resolve("oh my god, a #{fileName}")
+    return deferred.promise
+
   _toAbsoluteUri:(fileName, parentUri, store)->
     #normalization test
     path = require 'path'

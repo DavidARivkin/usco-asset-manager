@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "jasmine-node": "1.10.2",
-    "browserify": "git://github.com/kaosat-dev/node-browserify.git",
+    "browserify": "",
     "coffeeify": "",
     "coffeeify-redux": "0.1.0",
     "watchify": "0.1.0",
@@ -28,7 +28,6 @@
   "scripts": {
     "test": "jasmine-node --coffee specs/",
     "start": "beefy --live src/kernel.coffee:coffeescad-kernel.js 9080 -- --extension '.coffee' -t coffeeify & jasmine-node specs/ --color --verbose --coffee --autotest --watch src",
-    "release": "browserify --standalone AssetManager src/assetManager.coffee -t coffeeify --extension '.coffee' > assetManager.js
-"
+    "release": "browserify --standalone AssetManager src/assetManager.coffee -t coffeeify --extension '.coffee' > assetManager.js"
   }
 }
