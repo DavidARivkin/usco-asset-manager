@@ -18,10 +18,10 @@
     "jasmine-node": "1.10.2",
     "browserify": "",
     "coffeeify": "",
-    "coffeeify-redux": "0.1.0",
-    "watchify": "0.1.0",
+    "coffeeify-redux": "",
+    "watchify": "",
     "beefy": "",
-    "browserify-shim": "~2.0.8",
+    "browserify-shim": "",
     "uglify-js": "~2.4.0",
     "logerize": "0.0.2"
   },
