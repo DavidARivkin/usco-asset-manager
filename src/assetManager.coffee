@@ -1,11 +1,16 @@
 'use strict'
 path = require('path')
-Q = require("q")
-logger = require("../logger.coffee")
+Q = require('q')
+logger = require("./logger.coffee")
 logger.level = "info"
 
 #TODO: add loading from git repos , with optional tag, commit, hash, branch etc (similar to npm dependencies)
 #TODO: perhaps we should seperate store TYPE (local , xhr, dropbox) from store NAME (the root uri ?)
+
+
+#TODO: remove this, for testing for now
+stlParser = require("./STLParser_test")
+xhrStore = require("./hxrStore_test")
 
 ###*
  *Manager for lifecyle of assets: load, store unload 

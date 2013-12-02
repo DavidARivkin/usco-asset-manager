@@ -1,5 +1,8 @@
 > Generate our package (not including most libs)
 browserify -x q -x path -i q -r ./src/assetManager.coffee:AssetManager -t coffeeify --extension '.coffee' > assetManager.js
+
+or rather :
+browserify -x q -x path -r ./src/assetManager.coffee:AssetManager -t coffeeify --extension '.coffee' > assetManager.js
 > Note the :AssetManager to set export name
 > Also note the use of -i to exclude / ignore q (this seems necessary for external npm packages ??)
 
