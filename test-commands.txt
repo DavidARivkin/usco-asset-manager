@@ -4,4 +4,7 @@ browserify -x q -x path -i q -r ./src/assetManager.coffee:AssetManager -t coffee
 > Also note the use of -i to exclude / ignore q (this seems necessary for external npm packages ??)
 
 > generate a "common" package for libs
- -r path -r q > common.js
+browserify -r path -r q > common.js
+
+>this works with a "recent" browserify
+browserify -x q -x path -r ./src/assetManager.coffee:AssetManager -t coffeeify --extension '.coffee' > assetManager.js

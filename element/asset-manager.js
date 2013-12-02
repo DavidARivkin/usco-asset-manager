@@ -9,7 +9,7 @@ Polymer('asset-manager', {
   enteredView: function() {
   },
   //API
-  addParser: function( extension, parser )
+  addParser: function( extension, parser ): //why would we want to add them on the fly via api ?
   {
     return this._assetManager.addParser( extension, parser );
   },

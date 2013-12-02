@@ -1,6 +1,6 @@
 'use strict'
 path = require('path')
-Q = require("../q")
+Q = require("q")
 logger = require("../logger.coffee")
 logger.level = "info"
 
