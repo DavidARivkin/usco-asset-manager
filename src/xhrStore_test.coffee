@@ -66,9 +66,10 @@ class XHRStore
   #Helpers
   
   #ajax request wrapper
-  _request:(uri, type)=>
+  _request:(uri, type, mimeType)=>
     #type: GET, POST, etc
     type = type or "GET"
+    mimeType = mimeType or null
     
     encoding = encoding or 'utf8'
     deferred = Q.defer()
@@ -76,10 +77,12 @@ class XHRStore
     request = new XMLHttpRequest()
 
     console.log("getting", uri);
-    request.open( "GET", uri, true );
+    request.open( "GET", uri, true )
+    if mimeType?
+      request.overrideMimeType('text/plain; charset=x-user-defined') #TODO: fix this
     
     onLoad= ( event )=>
-      result = event.target.responseText
+      result = event.target.response or event.target.responseText
       #serializer = new XMLSerializer() #FIXME: needed ???
       #result = serializer.serializeToString(result)
       deferred.resolve( result )
