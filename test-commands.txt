@@ -11,3 +11,7 @@ browserify -r path -r q > common.js
 
 >this works with a "recent" browserify
 browserify -x q -x path -r ./src/assetManager.coffee:AssetManager -t coffeeify --extension '.coffee' > assetManager.js
+
+>Updated:
+browserify -x q -x path -x xmlhttprequest -i xmlhttprequest -r ./src/assetManager.coffee:AssetManager -t coffeeify --extension '.coffee' > assetManager.js
+
