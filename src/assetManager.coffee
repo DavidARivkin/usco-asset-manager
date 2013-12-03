@@ -10,7 +10,7 @@ logger.level = "info"
 
 #TODO: remove this, for testing for now
 stlParser = require("./STLParser_test")
-xhrStore = require("./hxrStore_test")
+xhrStore = require("./xhrStore_test.coffee")
 
 ###*
  *Manager for lifecyle of assets: load, store unload 
@@ -19,12 +19,15 @@ xhrStore = require("./hxrStore_test")
 class AssetManager
   constructor:( stores )->
   	#manages assets (files)
-  	@stores = stores
+  	@stores = stores or {}
   	@parsers = {}
   	@assetCache = {}
   	
   	#extensions of code file names (do not need parsing, but more complex evaluating !!)
   	@codeExtensions = ["coffee","litcoffee","ultishape","scad"]
+
+  	@addParser("stl", stlParser)
+  	@stores["xhr"] = new xhrStore()
   
   _parseFileUri: ( fileUri )->
     #extract store, file path etc
@@ -118,11 +121,12 @@ class AssetManager
     if not (filename of @assetCache)
       extension = filename.split(".").pop()
       #load raw data from file, get a deferred
-      loaderDeferred = store.loadFile(filename)
+      loaderDeferred = store.read(filename)
       
       #loadedResource 
       loaderDeferred
       .then (loadedResource) =>
+        deferred.notify( "starting parsing" )
         if extension not in @codeExtensions
           parser = @parsers[ extension ]
           if not parser
@@ -135,11 +139,15 @@ class AssetManager
         #and return it
         #deferred.resolve( loadedResource )  
         #TODO: alternative: can be practical so we can use the deferred directly : [fileUri, loadedResource]
-        deferred.resolve([fileUri, loadedResource])  
-        
-       .fail (error) =>
+        deferred.resolve({uri:fileUri, resource:loadedResource})  
+      
+      .progress ( progress ) =>
+          deferred.notify( progress )
+          logger.info "got some progress", progress
+      .fail (error) =>
+         console.log("fail in second step")         
          #TODO: alternative: can be practical so we can use the deferred directly : [fileUri, loadedResource]
-         deferred.reject( [fileUri, error] )
+         deferred.reject( {uri:fileUri, error:error} )
     else
       #the resource was already loaded, return it 
       loadedResource = @assetCache[filename]

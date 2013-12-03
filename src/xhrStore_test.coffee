@@ -2,14 +2,19 @@
 Q = require "q"
 fs = require "fs"
 path = require "path"
-mime = require "mime"
-XMLHttpRequest = require("w3c-xmlhttprequest").XMLHttpRequest
+#mime = require "mime"
 
-merge = utils.merge
-logger = require("logger")
-logger.level = "debug"
+if not window?
+  #if (not XMLHttpRequest?)
+  console.log(" on NODE")
+  XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+else
+  XMLHttpRequest = window.XMLHttpRequest
 
-#!!!TODO: important, for read only access (viewer) we can use : https://www.youmagine.com/designs/dust-filter/documents.json
+
+#merge = utils.merge
+logger = require("./logger.coffee")
+logger.level = "critical"
 
 
 class XHRStore
@@ -24,8 +29,8 @@ class XHRStore
       isDataDumpAllowed: false
       showPaths:true
     
-    options = merge defaults, options
-    super options
+    #options = merge defaults, options
+    #super options
     ###
     #FIXME@vent.on("project:saved",@pushSavedProject)
     ###
@@ -67,23 +72,23 @@ class XHRStore
     
     encoding = encoding or 'utf8'
     deferred = Q.defer()
+
     request = new XMLHttpRequest()
 
-    request.open( type, uri, true );
+    console.log("getting", uri);
+    request.open( "GET", uri, true );
     
     onLoad= ( event )=>
-      #console.log "xhr success", event.target.responseText
       result = event.target.responseText
-      serializer = new XMLSerializer() #FIXME: needed ???
-      result = serializer.serializeToString(result)
-      logger.debug "fetched list: ", result
+      #serializer = new XMLSerializer() #FIXME: needed ???
+      #result = serializer.serializeToString(result)
       deferred.resolve( result )
     
     onProgress= ( event )=>
       if (event.lengthComputable)
         percentComplete = (event.loaded/event.total)*100
         logger.debug "percent", percentComplete
-        deferred.notify( percentComplete )
+        deferred.notify( {"download":percentComplete} )
     
     onError= ( event )=>
       deferred.reject(event)
@@ -95,20 +100,7 @@ class XHRStore
     
     request.send()
     return deferred.promise
-  
-  
-  #checks if specified project /project uri exists
-  isProject:( uri )=>
-    if fs.existsSync( uri )
-      stats = fs.statSync( uri )
-      if stats.isDirectory()
-        codeExtensions = ["coffee", "litcoffee", "js", "usco", "ultishape"] #TODO: REDUNDANT with modules! where to put this
-        for ext in codeExtensions
-          baseName = path.basename( uri )
-          mainFile = path.join( uri, baseName + "." + ext )
-          if fs.existsSync( mainFile )
-            return true
-    return false
+
 
     
 module.exports = XHRStore

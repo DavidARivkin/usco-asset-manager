@@ -25,7 +25,7 @@
  */
 
 
-THREE = require( 'three' ); //CHEAP HACK !!
+//THREE = require( 'three' ); //CHEAP HACK !!
 THREE.STLParser = function () {};
 
 THREE.STLParser.prototype = {
