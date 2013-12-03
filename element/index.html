@@ -2,17 +2,88 @@
 <html>
   <head>
     <title>AssetManager</title>
-    <script src="polymer.min.js"></script>
+    <script src="../components/platform/platform.js"></script>
+    <link rel="import" href="../components/polymer/polymer.html">
     <link rel="import" href="asset-manager.html">
+    <script src="../components/three/build/three.min.js"></script>
   </head>
   <body>
     <asset-manager> </asset-manager>
+
+
+    <polymer-element name="assets-list" attributes="assetCache tutu">
+      <template>
+          yup {{tutu}}
+          {{assetCache}}
+          <template repeat="{{asset in assetCache}}">
+            {{asset}}
+          </template>
+      </template>
+      <script>
+      Polymer('assets-list',{
+        assetCache: {},
+        tutu: 42, 
+        assetCacheChanged:function(old)
+        {
+            console.log("assetCacheChanged",this.assetCache);
+        },
+        tutuChanged:function(oldValue, newValue)
+        {
+            console.log("tutu changed",this.tutu);
+        }
+      });
+      </script>
+    </polymer-element>
+
+
+    <polymer-element name="usco-resource" attributes="name uri data">
+      <script>
+      Polymer('usco-resource',{
+        name: "",
+        uri: "",
+        data:"",
+      });
+      </script>
+    </polymer-element>
+
+    <assets-list> </assets-list>
+
     <script>
       document.addEventListener('WebComponentsReady', function() {
         var assetManager = document.querySelector('asset-manager');
-        console.log("here", assetManager);
-        assetManager.load("bal");
-        //assetManager.load("http://localhost/bla.stl");
+
+        var assetsList = document.querySelector('assets-list');
+        assetsList.assetCache = assetManager._assetManager.assetCache;
+        assetsList.tutu = 27;
+
+        var fileUri = "http://localhost:8080/element/femur.stl" //need to enable cors for this "http://raw.github.com/kaosat-dev/repBug/master/cad/stl/femur.stl"
+        var files = ["http://localhost:8080/element/femur.stl","http://localhost:8080/element/pr2_head_pan.stl","http://localhost:8080/element/pr2_head_tilt.stl"];
+
+
+        function onLoaded( loadedResource)
+        {
+          console.log("finished loading resource",loadedResource);
+          assetsList.assetCache = assetManager._assetManager.assetCache;
+        }
+
+        function onProgress( progress)
+        {
+          console.log("on progress",progress);
+        }
+
+        function onError( error)
+        {
+          console.log("error loading resource",error);
+        }
+
+        assetManager.addEventListener('resource:loaded', onLoaded);
+
+        for( var i = 0 ;i<files.length; i++)
+        {
+            assetManager.read( files[i] );//.then(onLoaded,onError,onProgress);
+        }
+      
+
       })
     </script>
   </body>
