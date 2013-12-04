@@ -20,4 +20,10 @@ Polymer('asset-manager', {
     promise.then( this._onResourceLoaded.bind(this) );
     return promise
   }
+  stats : function( fileUri)
+  {
+    var promise = this._assetManager.stats( fileUri, parentUri );
+    return promise
+  }
+
 });

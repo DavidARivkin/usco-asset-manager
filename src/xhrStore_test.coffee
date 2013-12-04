@@ -64,22 +64,39 @@ class XHRStore
     return @_request(uri)
  
   #Helpers
+
+  stats:( uri )=>
+    deferred = Q.defer()
+
+    request = new XMLHttpRequest()
+    
+    request.open("HEAD", uri, true)#HEAD, not get
+
+    #size is in bytes
+    request.onreadystatechange = () ->
+        if (this.readyState == this.DONE)
+          deferred.resolve parseInt(request.getResponseHeader("Content-Length"))
+
+    request.send()
+    return deferred.promise
+
+    
+
   
   #ajax request wrapper
   _request:(uri, type, mimeType)=>
     #type: GET, POST, etc
     type = type or "GET"
-    mimeType = mimeType or null
+    mimeType = mimeType or 'text/plain; charset=x-user-defined'
     
     encoding = encoding or 'utf8'
     deferred = Q.defer()
 
     request = new XMLHttpRequest()
 
-    console.log("getting", uri);
     request.open( "GET", uri, true )
     if mimeType?
-      request.overrideMimeType('text/plain; charset=x-user-defined') #TODO: fix this
+      request.overrideMimeType( mimeType ) 
     
     onLoad= ( event )=>
       result = event.target.response or event.target.responseText
@@ -91,7 +108,7 @@ class XHRStore
       if (event.lengthComputable)
         percentComplete = (event.loaded/event.total)*100
         logger.debug "percent", percentComplete
-        deferred.notify( {"download":percentComplete} )
+        deferred.notify( {"download":percentComplete,"total":event.total} )
     
     onError= ( event )=>
       deferred.reject(event)

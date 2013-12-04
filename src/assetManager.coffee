@@ -10,6 +10,7 @@ logger.level = "info"
 
 #TODO: remove this, for testing for now
 stlParser = require("./STLParser_test")
+amfParser = require("./AMFParser_test")
 xhrStore = require("./xhrStore_test.coffee")
 
 ###*
@@ -27,6 +28,7 @@ class AssetManager
   	@codeExtensions = ["coffee","litcoffee","ultishape","scad"]
 
   	@addParser("stl", stlParser)
+  	@addParser("amf", amfParser)
   	@stores["xhr"] = new xhrStore()
   
   _parseFileUri: ( fileUri )->
@@ -119,7 +121,7 @@ class AssetManager
       throw new Error("No store named #{storeName}")
     
     if not (filename of @assetCache)
-      extension = filename.split(".").pop()
+      extension = filename.split(".").pop().toLowerCase()
       #load raw data from file, get a deferred
       loaderDeferred = store.read(filename)
       
@@ -166,6 +168,25 @@ class AssetManager
   save: ( fileUri )->
 
   delete: (fileUri )->
+
+  stats: (fileUri, parentUri)->
+    if not fileUri?
+      throw new Error( "Invalid file name : #{fileUri}" )
+     
+    #resolve full path
+    fileUri = @_toAbsoluteUri(fileUri, parentUri)
+    
+    [storeName,filename] = @_parseFileUri( fileUri, parentUri)
+    logger.info( "Attempting to load :", filename,  "from store:", storeName )
+    
+    #get store instance , if it exists
+    store = @stores[ storeName ]
+
+    if not store
+      throw new Error("No store named #{storeName}")
+
+    return store.stats( fileUri )
+    
 
   ###***
   *load project (folder): TODO: should this be here ??

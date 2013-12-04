@@ -15,3 +15,6 @@ browserify -x q -x path -r ./src/assetManager.coffee:AssetManager -t coffeeify -
 >Updated:
 browserify -x q -x path -x xmlhttprequest -i xmlhttprequest -r ./src/assetManager.coffee:AssetManager -t coffeeify --extension '.coffee' > assetManager.js
 
+NOTE:
+  removed the three.js depency from bower.json for now (too big)
+    "three": "mrdoob/three.js#master"

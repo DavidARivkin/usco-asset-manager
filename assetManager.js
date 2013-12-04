@@ -57,6 +57,571 @@ module.exports = log;
 
 },{}],3:[function(require,module,exports){
 /**
+ * @author kaosat-dev
+ *
+ * Description: A THREE loader for AMF files (3d printing, cad, sort of a next gen stl).
+ *
+ * Limitations:
+ * 	No support for zipped AMF files
+ * 	Still some minor issues with color application ordering (see AMF docs)
+ * 	
+ *
+ * Usage:
+ * 	var loader = new THREE.AMFParser();
+ * 	loader.addEventListener( 'load', function ( event ) {
+ *
+ * 		var geometry = event.content;
+ * 		scene.add( new THREE.Mesh( geometry ) );
+ *
+ * 	} );
+ * 	loader.load( './models/amf/slotted_disk.amf' );
+ */
+//THREE = require( 'three' ); //CHEAP HACK !!
+
+THREE.AMFParser = function () {
+	this.defaultColor = new THREE.Color( "#cccccc" );
+	this.defaultVertexNormal = new THREE.Vector3( 1, 1, 1 );
+	this.recomputeNormals = true;
+};
+
+THREE.AMFParser.prototype = {
+
+	constructor: THREE.AMFParser
+
+};
+
+THREE.AMFParser.prototype.parse = function (data) {
+
+	//big question : should we be using something more like the COLLADA loader ??
+	var xmlDoc = this._parseXML( data );
+	var root = xmlDoc.documentElement;
+	if( root.nodeName !== "amf")
+	{
+		throw("Unvalid AMF document, should have a root node called 'amf'");
+	}
+	
+	console.log("pouet")
+	return this._parseObjects(root);
+};
+
+THREE.AMFParser.prototype._parseObjects = function ( root ){
+
+	var objectsData = root.getElementsByTagName("object");
+	
+	var meshes = {};//temporary storage
+	
+	this.textures = this._parseTextures( root );
+	this.materials = this._parseMaterials( root ); 
+	
+	for (var i=0; i< objectsData.length ; i++)
+	{
+		var objectData = objectsData[i];
+		
+		var objectId = objectData.attributes.getNamedItem("id").nodeValue;
+		console.log("object id", objectId);
+		
+		var geometry = this._parseGeometries(objectData);
+		var volumes = this._parseVolumes(objectData, geometry);
+		///////////post process
+		var currentGeometry = geometry["geom"];
+		var volumeColor = new THREE.Color("#ffffff");
+		var color = volumeColor !== null ? volumeColor : new THREE.Color("#ffffff");
+
+		//console.log("color", color);
+		var currentMaterial = new THREE.MeshLambertMaterial(
+		{ 	color: color,
+			vertexColors: THREE.VertexColors,
+			shading: THREE.FlatShading
+		} );
+		
+		//TODO: do this better
+		if(Object.keys(this.textures).length>0)
+		{
+			var materialArray = [];
+			for (var textureIndex in this.textures)
+			{
+				var texture = this.textures[textureIndex];
+				materialArray.push(new THREE.MeshBasicMaterial({
+					map: texture,
+					color: color,
+					vertexColors: THREE.VertexColors
+					}));
+			}
+			console.log("bleh");
+			currentMaterial = new THREE.MeshFaceMaterial(materialArray);
+		}
+		
+		//currentMaterial = new THREE.MeshNormalMaterial();
+		var currentMesh = new THREE.Mesh(currentGeometry, currentMaterial);
+	
+		if(this.recomputeNormals)
+		{
+			//TODO: only do this, if no normals were specified???
+			currentGeometry.computeFaceNormals();
+			currentGeometry.computeVertexNormals();
+		}
+		currentGeometry.computeBoundingBox();
+		currentGeometry.computeBoundingSphere();
+		
+		//add additional data to mesh
+		var metadata = parseMetaData( objectData );
+		console.log("meta", metadata);
+		//add meta data to mesh
+		if('name' in metadata)
+		{
+			currentMesh.name = metadata.name;
+		}
+		
+		meshes[objectId] = currentMesh
+		//cleanup
+		geometry = null;
+	}
+	
+	
+	return this._generateScene(root, meshes);
+}
+
+
+THREE.AMFParser.prototype._parseGeometries = function (object){
+	//get geometry data
+	
+	var attributes = {};
+	
+	attributes["position"] = [];
+	attributes["normal"] = [];
+	attributes["color"] = [];
+	 
+	var objectsHash = {}; //temporary storage of instances helper for amf
+		var currentGeometry = new THREE.Geometry();		
+
+		var meshData = object.getElementsByTagName("mesh")[0]; 
+		
+		//get vertices data
+		var verticesData = meshData.getElementsByTagName("vertices"); 
+		for (var j=0;j<verticesData.length;j++)
+		{
+			var vertice = verticesData[j];
+			var vertexList = vertice.getElementsByTagName("vertex");
+			for (var u=0; u<vertexList.length;u++)
+			{
+				var vertexData = vertexList[u];
+				//get vertex data
+				var vertexCoords = parseCoords( vertexData );
+				var vertexNormals = parseNormals( vertexData , this.defaultVertexNormal);
+				var vertexColor = parseColor( vertexData , this.defaultColor);
+				
+				attributes["position"].push(vertexCoords);
+				attributes["normal"].push(vertexNormals);
+				attributes["color"].push(vertexColor);
+				
+				currentGeometry.vertices.push(vertexCoords);
+			}
+
+			//get edges data , if any
+			/* meh, kinda ugly spec to say the least
+			var edgesList = vertice.getElementsByTagName("edge");
+			for (var u=0; u<edgesList.length;u++)
+			{
+				var edgeData = edgesList[u];
+			}*/
+			
+		}
+	
+	return {"geom":currentGeometry,"attributes":attributes};
+}
+
+
+THREE.AMFParser.prototype._parseVolumes = function (meshData, geometryData){
+	//get volumes data
+	var currentGeometry = geometryData["geom"]
+	var volumesList = meshData.getElementsByTagName("volume");
+	console.log("    volumes:",volumesList.length);
+	
+	for(var i=0; i<volumesList.length;i++)
+	{
+		var volumeData = volumesList[i];//meshData.getElementsByTagName("volume")[0]; 
+	
+		//var colorData = meshData.getElementsByTagName("color");
+		var volumeColor = parseColor(volumeData);
+		
+		var materialId = volumeData.attributes.getNamedItem("materialid")
+		var materialColor = null;
+		if (materialId !== undefined && materialId !== null)
+		{
+			materialId=materialId.nodeValue;
+			var materialColor = this.materials[materialId].color;
+			console.log("volumeMaterial",materialId,"color",materialColor);
+		}
+		
+		
+		var trianglesList = volumeData.getElementsByTagName("triangle"); 
+		for (var j=0; j<trianglesList.length; j++)
+		{
+			var triangle = trianglesList[j];
+	
+			//parse indices
+			var v1 = parseTagText( triangle , "v1", "int");
+			var v2 = parseTagText( triangle , "v2", "int");
+			var v3 = parseTagText( triangle , "v3", "int");
+			
+			var face = new THREE.Face3( v1, v2, v3 ) 
+			currentGeometry.faces.push( face );
+			//console.log("v1,v2,v3,",v1,v2,v3);
+			
+			var colors = geometryData["attributes"]["color"];
+			var vertexColors = [colors[v1],colors[v2],colors[v3]];
+			
+			//add vertex indices to current geometry
+			//THREE.Face3 = function ( a, b, c, normal, color, materialIndex )
+			//var faceColor = colorData
+			
+	
+			var faceColor = parseColor(triangle);
+			
+			
+			//TODO: fix ordering of color priorities
+			//triangle/face coloring
+			if (faceColor !== null)
+			{
+				//console.log("faceColor", faceColor);
+				for( var v = 0; v < 3; v++ )  
+				{
+				    face.vertexColors[ v ] = faceColor;
+				}
+			}
+			else if (volumeColor!=null)
+			{
+				//console.log("volume color", volumeColor);
+				for( var v = 0; v < 3; v++ )  
+				{
+				    face.vertexColors[ v ] = volumeColor;
+				}
+			}//here object color
+			else if (materialColor != null)
+			{
+				for( var v = 0; v < 3; v++ )  
+				{
+				    face.vertexColors[ v ] = materialColor;
+				}
+			}
+			else
+			{
+				//console.log("vertexColors", vertexColors);
+				face.vertexColors = vertexColors;
+			}
+			//normals
+			var bla = geometryData["attributes"]["normal"];
+			var vertexNormals = [bla[v1],bla[v2],bla[v3]];
+			face.vertexNormals = vertexNormals;
+			//console.log(vertexNormals);
+			
+			
+			//get vertex UVs (optional)
+			var mapping = triangle.getElementsByTagName("map")[0];
+			if (mapping !== null && mapping !== undefined)
+			{
+				var rtexid = mapping.attributes.getNamedItem("rtexid").nodeValue;
+				var gtexid = mapping.attributes.getNamedItem("gtexid").nodeValue;
+				var btexid = mapping.attributes.getNamedItem("btexid").nodeValue;
+				//console.log("textures", rtexid,gtexid,btexid);
+				
+				face.materialIndex  = rtexid;
+				face.materialIndex  = 0;
+				
+				var u1 = mapping.getElementsByTagName("u1")[0].textContent;
+				u1 = parseFloat(u1);
+				var u2 = mapping.getElementsByTagName("u2")[0].textContent;
+				u2 = parseFloat(u2);
+				var u3 = mapping.getElementsByTagName("u3")[0].textContent;
+				u3 = parseFloat(u3);
+				
+				var v1 = mapping.getElementsByTagName("v1")[0].textContent;
+				v1 = parseFloat(v1);
+				var v2 = mapping.getElementsByTagName("v2")[0].textContent;
+				v2 = parseFloat(v2);
+				var v3 = mapping.getElementsByTagName("v3")[0].textContent;
+				v3 = parseFloat(v3);
+				
+				var uv1 = new THREE.Vector2(u1,v1);
+				var uv2 = new THREE.Vector2(u2,v2);
+				var uv3 = new THREE.Vector2(u3,v3);
+				currentGeometry.faceVertexUvs[ 0 ].push( [uv1,uv2,uv3]);
+				//currentGeometry.faceVertexUvs[ 0 ].push( [new THREE.Vector2(1,1),new THREE.Vector2(0,1),new THREE.Vector2(1,0)]);
+				//this.threeMaterials = []
+				//for (var i=0; i< textures.length;i++)
+			}
+		}
+	}
+}
+
+
+THREE.AMFParser.prototype._parseTextures = function ( node ){
+	//get textures data
+	var texturesData = node.getElementsByTagName("texture");
+	var textures = {};
+	if (texturesData !== undefined)
+	{
+		for (var j=0; j<texturesData.length; j++)
+		{
+			var textureData = texturesData[ j ];
+			var rawImg = textureData.textContent;
+			//cannot use imageLoader as it implies a seperate url
+			//var loader = new THREE.ImageLoader();
+			//loader.load( url, onLoad, onProgress, onError )
+			var image = document.createElement( 'img' );
+			rawImg = 'data:image/png;base64,'+btoa(rawImg);
+			console.log(rawImg);
+			
+			//
+			rawImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAAB90RVh0U29mdHdhcmUATWFjcm9tZWRpYSBGaXJld29ya3MgOLVo0ngAAAAWdEVYdENyZWF0aW9uIFRpbWUAMDUvMjgvMTGdjbKfAAABwklEQVQ4jdXUsWrjQBCA4X+11spikXAEUWdSuUjh5goXx1V5snu4kMLgyoEUgYNDhUHGsiNbCK200hWXFI7iOIEUd9Mu87E7MzsC6PjCcL4S+z/AwXuHQgg8T6GUi+MI2rbDmJqqMnTd26U/CXqeRxD4aO2ilIOUAms7jGkpipr9vqSqqo+BnudxcaEZjRRx7DIeK7SWFIUlSQxpKhkMHLZbemgPFEIQBD6jkeL62mc2u2QyuSIMA/J8z+Pjb+bzNQ8P0DTtedDzFFq7xLHLbHbJzc0PptPv+H5EWWYsl3fALZvNirK05LnCGHMaVOpvzcZjxWRy9Yx9A2J8P2U6hSRJuL/fsFoZhsNjsDc2jiOQUqC1JAwDfD8CYkA/oxFhGKC1REqB44jj/Ndg23ZY21EUljzfU5YZkAIFkFKWGXm+pygs1nbUdXOUL4Gfr5vi+wohBFFk0VoQRQNcN6Msf7Fc3rFYLFksnsiymu22oG3b0zWsKkNR1KSpZD5fA7ckSdLrcprWHA6Gpjm+oeCNbXN+Dmt2O8N6/YS19jz4gp76KYeDYbc79LB3wZdQSjEcKhxHUNcNVVX3nvkp8LPx7+/DP92w3rYV8ocfAAAAAElFTkSuQmCC';
+			
+			image.src = rawImg;
+			var texture = new THREE.Texture( image );
+			texture.sourceFile = '';
+			texture.needsUpdate = true;
+
+			console.log("loaded texture");
+			var textureId = textureData.attributes.getNamedItem("id").nodeValue;
+			var textureType = textureData.attributes.getNamedItem("type").nodeValue;
+			var textureTiling= textureData.attributes.getNamedItem("tiled").nodeValue
+			textures[textureId] = texture;
+		}
+	}
+	return textures;
+}
+
+THREE.AMFParser.prototype._parseMaterials = function ( node ){
+	
+	var materialsData = node.getElementsByTagName("material");
+	var materials = {};
+	if (materialsData !== undefined)
+	{
+		for (var j=0; j<materialsData.length; j++)
+		{
+			var materialData = materialsData[ j ];
+			var materialId = materialData.attributes.getNamedItem("id").nodeValue;
+			var materialMeta = parseMetaData( materialData )
+			var materialColor = parseColor(materialData);
+			console.log("material id", materialId, "color",materialColor );
+			materials[materialId] = {color:materialColor}
+		}
+	}
+	return materials;
+}
+
+
+THREE.AMFParser.prototype._parseConstellation = function ( root, meshes ){
+	//parse constellation / scene data
+	var constellationData = root.getElementsByTagName("constellation"); 
+	var scene = null; 
+	if (constellationData !== undefined && constellationData.length!==0)
+	{
+		scene = new THREE.Object3D();
+		for (var j=0; j<constellationData.length; j++)
+		{
+			var constellationData = constellationData[ j ];
+			var constellationId = constellationData.attributes.getNamedItem("id").nodeValue;
+			
+			var instancesData = constellationData.getElementsByTagName("instance");
+
+			if (instancesData !== undefined)
+			{
+				for (var u=0; u<instancesData.length; u++)
+				{
+					var instanceData = instancesData[ u ];
+					var objectId = instanceData.attributes.getNamedItem("objectid").nodeValue;
+			
+					var position = parseVector3(instanceData, "delta");
+					var rotation = parseVector3(instanceData, "r");
+					console.log("target object",objectId, "position",position, "rotatation", rotation)
+					
+					var meshInstance = meshes[objectId].clone();
+					meshInstance.position.add(position);
+					
+					meshInstance.rotation.set(rotation.x,rotation.y,rotation.z); 
+					
+					//we add current mesh to scene
+					scene.add(meshInstance);
+				}
+			}
+		}
+	}
+	return scene;
+}
+
+THREE.AMFParser.prototype._generateScene = function(root, meshes){
+	
+	// if there is constellation data, don't just add meshes to the scene, but use 
+	//the info from constellation to do so (additional transforms)
+	var scene = this._parseConstellation( root, meshes );
+	if (scene == null)
+	{
+		scene = new THREE.Object3D(); //storage of actual objects /meshes
+		for (var meshIndex in meshes)
+		{
+			var mesh = meshes[meshIndex];
+			scene.add( mesh );
+		}
+	}
+	return scene;
+}
+
+THREE.AMFParser.prototype._parseXML = function (xmlStr) {
+
+	//from http://stackoverflow.com/questions/649614/xml-parsing-of-a-variable-string-in-javascript
+	var parseXml;
+
+	if (typeof window !== 'undefined') 
+	{
+		if (typeof window.DOMParser != "undefined") {
+	    	parseXml = function(xmlStr) {
+			return ( new window.DOMParser() ).parseFromString(xmlStr, "text/xml");
+	    };
+		} else if (typeof window.ActiveXObject != "undefined" &&
+	       new window.ActiveXObject("Microsoft.XMLDOM")) 
+	    {
+	    	parseXml = function(xmlStr) {
+			var xmlDoc = new window.ActiveXObject("Microsoft.XMLDOM");
+			xmlDoc.async = "false";
+			xmlDoc.loadXML(xmlStr);
+			return xmlDoc;
+	    };
+	} else {
+	    throw new Error("No XML parser found");
+		}
+	}
+	else
+	{
+		//console.log("running nodejs")
+		//console.log("raw data",xmlStr)
+		DOMParser = require('xmldom').DOMParser;
+		var xmlDoc = new DOMParser().parseFromString(xmlStr, "text/xml");
+		//console.log("gne", xmlDoc);
+		return xmlDoc;
+	}
+	
+
+	return parseXml(xmlStr);
+
+}
+
+
+function parseMetaData( node )
+	{
+		var metadataList = node.getElementsByTagName("metadata");
+		var result = {};
+		for (var i=0; i<metadataList.length;i++)
+		{
+			var current = metadataList[i];
+			if (current.parentNode == node)
+			{
+				var name = current.attributes.getNamedItem("type").nodeValue;
+				var value = current.textContent;
+				result[name] = value;
+			}
+		}
+		return result;
+	}
+
+	function parseTagText( node , name, toType , defaultValue)
+	{
+		defaultValue = defaultValue || null;
+		
+		var value = node.getElementsByTagName(name)[0]
+		
+
+		if( value !== null && value !== undefined )
+		{
+			value=value.textContent;
+			switch(toType)
+			{
+				case "float":
+					value = parseFloat(value);
+				break;
+			
+				case "int":
+					value = parseInt(value);
+				//default:
+
+			}
+		}
+		else if (defaultValue !== null)
+		{
+			value = defaultValue;
+		}
+		return value;
+	}
+
+	function parseColor( node , defaultValue)
+	{
+		var colorNode = node.getElementsByTagName("color")[0];//var color = volumeColor !== null ? volumeColor : new THREE.Color("#ffffff");
+		var color = defaultValue || null;
+		
+		if (colorNode !== null && colorNode !== undefined)
+		{
+			if (colorNode.parentNode == node)
+			{
+			var r = parseTagText( node , "r", "float");
+			var g = parseTagText( node , "g", "float");
+			var b = parseTagText( node , "b", "float");
+			var color = new THREE.Color().setRGB( r, g, b );
+			}
+		}	
+		return color;
+	}
+
+	function parseVector3( node, prefix )
+	{
+		var coords = null;
+		
+		var x = parseTagText( node , prefix+"x", "float") || 0;
+		var y = parseTagText( node , prefix+"y", "float") || 0;
+		var z = parseTagText( node , prefix+"z", "float") || 0;
+		var coords = new THREE.Vector3(x,y,z);
+		return coords;
+	}
+
+	function parseCoords( node )
+	{
+		var coordinatesNode = node.getElementsByTagName("coordinates")[0];
+		var coords = null;
+		
+		if (coordinatesNode !== null && coordinatesNode !== undefined)
+		{
+			if (coordinatesNode.parentNode == node)
+			{
+			var x = parseTagText( node , "x", "float");
+			var y = parseTagText( node , "y", "float");
+			var z = parseTagText( node , "z", "float");
+			var coords = new THREE.Vector3(x,y,z);
+			}
+		}	
+		return coords;
+	}
+	
+	function parseNormals( node, defaultValue )
+	{
+		//get vertex normal data (optional)
+		var normalsNode = node.getElementsByTagName("normal")[0];
+		var normals = defaultValue || null;;
+		
+		if (normalsNode !== null && normalsNode !== undefined)
+		{
+			if (normalsNode.parentNode == node)
+			{
+			var x = parseTagText( node , "nx", "float");
+			var y = parseTagText( node , "ny", "float");
+			var z = parseTagText( node , "nz", "float");
+			var normals = new THREE.Vector3(x,y,z);
+			}
+		}	
+		return normals;
+	}
+
+module.exports = THREE.AMFParser;
+
+},{"xmldom":9}],4:[function(require,module,exports){
+/**
  * @author aleeper / http://adamleeper.com/
  * @author mrdoob / http://mrdoob.com/
  * @author gero3 / https://github.com/gero3
@@ -400,10 +965,10 @@ if ( typeof DataView === 'undefined'){
 module.exports = THREE.STLParser;
 
 },{}],"AssetManager":[function(require,module,exports){
-module.exports=require('cZk7FZ');
-},{}],"cZk7FZ":[function(require,module,exports){
+module.exports=require('18WD8H');
+},{}],"18WD8H":[function(require,module,exports){
 'use strict';
-var AssetManager, Q, logger, path, stlParser, xhrStore,
+var AssetManager, Q, amfParser, logger, path, stlParser, xhrStore,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
@@ -416,6 +981,8 @@ logger = require("./logger.coffee");
 logger.level = "info";
 
 stlParser = require("./STLParser_test");
+
+amfParser = require("./AMFParser_test");
 
 xhrStore = require("./xhrStore_test.coffee");
 
@@ -434,6 +1001,7 @@ AssetManager = (function() {
     this.assetCache = {};
     this.codeExtensions = ["coffee", "litcoffee", "ultishape", "scad"];
     this.addParser("stl", stlParser);
+    this.addParser("amf", amfParser);
     this.stores["xhr"] = new xhrStore();
   }
 
@@ -517,7 +1085,7 @@ AssetManager = (function() {
       throw new Error("No store named " + storeName);
     }
     if (!(filename in this.assetCache)) {
-      extension = filename.split(".").pop();
+      extension = filename.split(".").pop().toLowerCase();
       loaderDeferred = store.read(filename);
       loaderDeferred.then(function(loadedResource) {
         var parser;
@@ -568,6 +1136,21 @@ AssetManager = (function() {
 
   AssetManager.prototype["delete"] = function(fileUri) {};
 
+  AssetManager.prototype.stats = function(fileUri, parentUri) {
+    var filename, store, storeName, _ref;
+    if (fileUri == null) {
+      throw new Error("Invalid file name : " + fileUri);
+    }
+    fileUri = this._toAbsoluteUri(fileUri, parentUri);
+    _ref = this._parseFileUri(fileUri, parentUri), storeName = _ref[0], filename = _ref[1];
+    logger.info("Attempting to load :", filename, "from store:", storeName);
+    store = this.stores[storeName];
+    if (!store) {
+      throw new Error("No store named " + storeName);
+    }
+    return store.stats(fileUri);
+  };
+
   /****
   *load project (folder): TODO: should this be here ??
   * @param {string} uri: folder/url path
@@ -589,7 +1172,7 @@ AssetManager = (function() {
 module.exports = AssetManager;
 
 
-},{"./STLParser_test":3,"./logger.coffee":6,"./xhrStore_test.coffee":7,"path":"22U5JF","q":"cd1vZp","url":13}],6:[function(require,module,exports){
+},{"./AMFParser_test":3,"./STLParser_test":4,"./logger.coffee":7,"./xhrStore_test.coffee":8,"path":"iND2HM","q":"Ed4Js3","url":14}],7:[function(require,module,exports){
 var __filename="/logger.coffee";var formatMessage, getExecutingModuleName, log, logger, path,
   __slice = [].slice;
 
@@ -690,7 +1273,7 @@ logger.error = function() {
 module.exports = logger;
 
 
-},{"logerize":1,"path":"22U5JF"}],7:[function(require,module,exports){
+},{"logerize":1,"path":"iND2HM"}],8:[function(require,module,exports){
 var process=require("__browserify_process");'use strict';
 var Q, XHRStore, XMLHttpRequest, fs, logger, path,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
@@ -715,6 +1298,7 @@ logger.level = "critical";
 XHRStore = (function() {
   function XHRStore(options) {
     this._request = __bind(this._request, this);
+    this.stats = __bind(this.stats, this);
     this.read = __bind(this.read, this);
     this.list = __bind(this.list, this);
     this.logout = __bind(this.logout, this);
@@ -769,18 +1353,35 @@ XHRStore = (function() {
     return this._request(uri);
   };
 
-  XHRStore.prototype._request = function(uri, type) {
+  XHRStore.prototype.stats = function(uri) {
+    var deferred, request;
+    deferred = Q.defer();
+    request = new XMLHttpRequest();
+    request.open("HEAD", uri, true);
+    request.onreadystatechange = function() {
+      if (this.readyState === this.DONE) {
+        return deferred.resolve(parseInt(request.getResponseHeader("Content-Length")));
+      }
+    };
+    request.send();
+    return deferred.promise;
+  };
+
+  XHRStore.prototype._request = function(uri, type, mimeType) {
     var deferred, encoding, onError, onLoad, onProgress, request,
       _this = this;
     type = type || "GET";
+    mimeType = mimeType || 'text/plain; charset=x-user-defined';
     encoding = encoding || 'utf8';
     deferred = Q.defer();
     request = new XMLHttpRequest();
-    console.log("getting", uri);
     request.open("GET", uri, true);
+    if (mimeType != null) {
+      request.overrideMimeType(mimeType);
+    }
     onLoad = function(event) {
       var result;
-      result = event.target.responseText;
+      result = event.target.response || event.target.responseText;
       return deferred.resolve(result);
     };
     onProgress = function(event) {
@@ -789,7 +1390,8 @@ XHRStore = (function() {
         percentComplete = (event.loaded / event.total) * 100;
         logger.debug("percent", percentComplete);
         return deferred.notify({
-          "download": percentComplete
+          "download": percentComplete,
+          "total": event.total
         });
       }
     };
@@ -811,9 +1413,9 @@ XHRStore = (function() {
 module.exports = XHRStore;
 
 
-},{"./logger.coffee":6,"__browserify_process":18,"fs":11,"path":"22U5JF","q":"cd1vZp","xmlhttprequest":8}],8:[function(require,module,exports){
+},{"./logger.coffee":7,"__browserify_process":19,"fs":12,"path":"iND2HM","q":"Ed4Js3"}],9:[function(require,module,exports){
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 
 
 //
@@ -1031,7 +1633,7 @@ if (typeof Object.getOwnPropertyDescriptor === 'function') {
   exports.getOwnPropertyDescriptor = valueObject;
 }
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -1348,13 +1950,13 @@ assert.doesNotThrow = function(block, /*optional*/message) {
 };
 
 assert.ifError = function(err) { if (err) {throw err;}};
-},{"_shims":9,"util":14}],11:[function(require,module,exports){
+},{"_shims":10,"util":15}],12:[function(require,module,exports){
 
 // not implemented
 // The reason for having an empty file and not throwing is to allow
 // untraditional implementation of this module.
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -1565,7 +2167,7 @@ QueryString.parse = QueryString.decode = function(qs, sep, eq, options) {
 
   return obj;
 };
-},{"_shims":9,"buffer":16,"util":14}],13:[function(require,module,exports){
+},{"_shims":10,"buffer":17,"util":15}],14:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2260,7 +2862,7 @@ Url.prototype.parseHost = function() {
   }
   if (host) this.hostname = host;
 };
-},{"_shims":9,"querystring":12,"util":14}],14:[function(require,module,exports){
+},{"_shims":10,"querystring":13,"util":15}],15:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2805,7 +3407,7 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-},{"_shims":9}],15:[function(require,module,exports){
+},{"_shims":10}],16:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -2891,7 +3493,7 @@ exports.writeIEEE754 = function(buffer, value, offset, isBE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128;
 };
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var assert;
 exports.Buffer = Buffer;
 exports.SlowBuffer = Buffer;
@@ -4017,7 +4619,7 @@ Buffer.prototype.writeDoubleBE = function(value, offset, noAssert) {
   writeDouble(this, value, offset, true, noAssert);
 };
 
-},{"./buffer_ieee754":15,"assert":10,"base64-js":17}],17:[function(require,module,exports){
+},{"./buffer_ieee754":16,"assert":11,"base64-js":18}],18:[function(require,module,exports){
 (function (exports) {
 	'use strict';
 
@@ -4103,7 +4705,7 @@ Buffer.prototype.writeDoubleBE = function(value, offset, noAssert) {
 	module.exports.fromByteArray = uint8ToBase64;
 }());
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
