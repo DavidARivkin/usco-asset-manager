@@ -150,10 +150,11 @@ class AssetManager
             deferred.notify( progress )
             logger.info "got some progress", progress
         .fail (error) =>
-           console.log("fail in data reading step",error) 
+           logger.error("failure in data reading step",error) 
            resource.error = error.message
            deferred.reject resource
       .fail (error) =>
+        logger.error("failure in getting parser",error) 
         resource.error = "No parser found for #{extension} file format"
         deferred.reject resource
     else
@@ -165,13 +166,19 @@ class AssetManager
 
   _loadParser:( extension )=>
     parser = @parsers[ extension ]
+    parserDeferred = Q.defer()
     if not parser
       parserName = extension.toUpperCase()+"Parser"
-      parserPromise = requireP( "./"+parserName )
-      return parserPromise.then (parserKlass) =>
-        @parsers[ extension ] = new parserKlass()
+      parserPromise = requireP( parserName )
+      parserPromise.then (parserKlass) =>
+        parser = new parserKlass()
+        @parsers[ extension ] = parser
+        parserDeferred.resolve( parser )
+      .fail (error)->
+        parserDeferred.reject( error )
     else
-      Q(parser)
+      parserDeferred.resolve( parser )
+    return parserDeferred.promise
 
   ###*** 
   *remove resource from cached assets

@@ -37,14 +37,14 @@ describe "AssetManager", ->
 
   it 'can load parsers dynamically based on resource extension',(done)->
     try
-      fs.symlinkSync(path.resolve("./specs/STLParser.js"),"src/STLParser.js")
+      fs.symlinkSync(path.resolve("./specs/STLParser.js"),"node_modules/STLParser.js")
 
     fileUri = "dummy:specs/data/femur.stl"
-    assetManager.load( fileUri ).done ( loadedResource ) =>
+    assetManager.load( fileUri ).then ( loadedResource ) =>
       expect( loadedResource.data ).not.toEqual(null)
       done()
     try
-      fs.unlinkSync("src/STLParser.js")
+      fs.unlinkSync("node_modules/STLParser.js")
   , 400
 
   it 'can handle various file types via settable parsers',(done)->
