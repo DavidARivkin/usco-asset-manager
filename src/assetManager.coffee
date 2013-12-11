@@ -3,18 +3,26 @@ path = require('path')
 Q = require('q')
 logger = require("./logger.coffee")
 logger.level = "info"
-
-requireP = require("./requirePromise");
-
+requireP = require("./requirePromise")
 
 #TODO: add loading from git repos , with optional tag, commit, hash, branch etc (similar to npm dependencies)
 #TODO: perhaps we should seperate store TYPE (local , xhr, dropbox) from store NAME (the root uri ?)
 
 
-#TODO: remove this, for testing for now
-#stlParser = require("./STLParser_test")
-#amfParser = require("./AMFParser_test")
-#xhrStore = require("./xhrStore_test.coffee")
+#TODO: should this be "asset??"
+class Resource
+  constructor:(uri)->
+    console.log("uri",uri)
+    @name = uri.split("/").pop()
+    @data = null
+    @error = null
+
+    @fetchProgress = 10;
+    @parseProgress = 0;
+    @totalRawSize = 0;
+
+    @totalDisplaySize = ""#TODO: remove this, ui only
+    @loaded = false
 
 ###*
  *Manager for lifecyle of assets: load, store unload 
@@ -48,13 +56,7 @@ class AssetManager
     else if storeName is "http" or storeName is "https"
       storeName = "xhr"
       fileName = pathInfo.href
-    
     return [ storeName, fileName ] 
-  
-  _testDeferred:(fileName)->
-    deferred = Q.defer()
-    deferred.resolve("oh my god, a #{fileName}")
-    return deferred.promise
 
   _toAbsoluteUri:(fileName, parentUri, store)->
     #normalization test
@@ -81,7 +83,6 @@ class AssetManager
       rootUri = path.dirname(rootUri)
       fullPath = path.join( rootUri, fileName )
       
-      
     logger.debug("fullPath (from relative)", fullPath)
     
     return fullPath
@@ -100,7 +101,6 @@ class AssetManager
   load: ( fileUri, parentUri, cachingParams  )->
     #load resource, store it in resource map, return it for use
     parentUri = parentUri or null
-    
     transient = if cachingParams? then cachingParams.transient else false    
     
     deferred = Q.defer()
@@ -113,7 +113,14 @@ class AssetManager
     
     [storeName,filename] = @_parseFileUri( fileUri, parentUri)
     logger.info( "Attempting to load :", filename,  "from store:", storeName )
+
+    #STEP1: dynamically "require" the adequate store
+    #STEP2: dynamically "require" the adequate parser
+    #STEP3: no errors yet : fetch the data
+    #STEP4: no errors yet : parse the data, return resouce
     
+    resource = new Resource(fileUri)
+
     #get store instance , if it exists
     store = @stores[ storeName ]
     if not store
@@ -121,49 +128,50 @@ class AssetManager
     
     if not (filename of @assetCache)
       extension = filename.split(".").pop().toLowerCase()
-
-      #STEP1: dynamically "require" the adequate parser
-      #parser = @parsers[ extension ]
-      parserName = extension.toUpperCase()+"Parser"
-      parserPromise = requireP( "./"+parserName )
-      parserPromise
-      .then (parserKlass) =>
-        console.log("found parser",parserName,parserKlass)
-      .fail (error) =>
-        console.log("bla",error)
-        deferred.reject( {uri:fileUri, error:"failed to find correct parser"} )
-      #Step2: load raw data from file, get a promise
-      rawDataPromise = store.read(filename)
-      console.log("pouet")
-      #loadedResource 
-      rawDataPromise
-      .then (loadedResource) =>
-        deferred.notify( "starting parsing" )
-        if extension not in @codeExtensions
-          parser = @parsers[ extension ]
-          if not parser
-            throw new Error("No parser for #{extension}")
-          loadedResource = parser.parse(loadedResource)
-        #if we are meant to hold on to this resource, cache it
-        if not transient
-          @assetCache[ fileUri ] = loadedResource
-          
-        #and return it
-        #TODO: should return a "resource" : with the uri, metadata, the parsed data etc
-        deferred.resolve({uri:fileUri, resource:loadedResource})  
       
-      .progress ( progress ) =>
-          deferred.notify( progress )
-          logger.info "got some progress", progress
+      #if extension not in @codeExtensions
+      parserPromise = @_loadParser( extension )
+
+      parserPromise
+      .then (parser) =>
+        #load raw data from uri/file, get a promise
+        rawDataPromise = store.read(filename)
+        rawDataPromise
+        .then (loadedResource) =>
+          deferred.notify( "starting parsing" )
+          loadedResource = parser.parse(loadedResource)
+          resource.data = loadedResource
+
+          if not transient #if we are meant to hold on to this resource, cache it
+            @assetCache[ fileUri ] = resource
+
+          deferred.resolve resource
+        .progress ( progress ) =>
+            deferred.notify( progress )
+            logger.info "got some progress", progress
+        .fail (error) =>
+           console.log("fail in data reading step",error) 
+           resource.error = error.message
+           deferred.reject resource
       .fail (error) =>
-         console.log("fail in data reading step",error) 
-         deferred.reject( {uri:fileUri, error:error.message} )
+        resource.error = "No parser found for #{extension} file format"
+        deferred.reject resource
     else
       #the resource was already loaded, return it 
       loadedResource = @assetCache[filename]
       deferred.resolve( loadedResource )
       
     return deferred.promise
+
+  _loadParser:( extension )=>
+    parser = @parsers[ extension ]
+    if not parser
+      parserName = extension.toUpperCase()+"Parser"
+      parserPromise = requireP( "./"+parserName )
+      return parserPromise.then (parserKlass) =>
+        @parsers[ extension ] = new parserKlass()
+    else
+      Q(parser)
 
   ###*** 
   *remove resource from cached assets
