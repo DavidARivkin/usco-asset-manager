@@ -23,7 +23,8 @@
     "beefy": "",
     "browserify-shim": "",
     "uglify-js": "~2.4.0",
-    "logerize": "0.0.2"
+    "logerize": "0.0.2",
+    "nock": "~0.25.0"
   },
   "scripts": {
     "test": "jasmine-node --coffee specs/",

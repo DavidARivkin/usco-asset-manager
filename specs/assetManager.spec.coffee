@@ -2,8 +2,8 @@
 path = require "path"
 
 AssetManager = require "../src/assetManager"
-STLParser = require "./STLParser"
-AMFParser = require "./AMFParser"
+#STLParser = require "./STLParser"
+#AMFParser = require "./AMFParser"
 
 DummyStore = require "./dummyStore"
 DummyXHRStore = require "./dummyXHRStore"
@@ -18,16 +18,24 @@ describe "AssetManager", ->
     stores["xhr"] = new DummyXHRStore()
     assetManager = new AssetManager( stores )
   
-
-  it 'should fail to load resources gracefully',(done)->
-    assetManager.addParser("stl", STLParser)
+  it 'should fail to load resources with unvalid uris gracefully',(done)->
+    #assetManager.addParser("stl", STLParser)
     
     fileUri = "dummy:specs/femur.stl"
-    assetManager.loadResource( fileUri ).catch ( error ) =>
-      expect(error).toEqual("specs/femur.stl not found")
+    assetManager.load( fileUri ).catch ( error ) =>
+      expect(error.error).toEqual("specs/femur.stl not found")
       done()
   , 400
 
+  it 'should fail to load resources unexisting parsers gracefully',(done)->
+    
+    fileUri = "dummy:specs/data/femur.ctm"
+    assetManager.load( fileUri ).catch ( error ) =>
+      expect(error.error).toEqual("specs/femur.stl not found")
+      done()
+  , 400
+
+  ###
   it 'can resolve absolute and relative file paths, from different stores',(done)->
     assetManager.addParser("stl", STLParser)
 
@@ -76,6 +84,7 @@ describe "AssetManager", ->
     .fail( error ) ->
       expect(false).toBeTruthy error.message
       done()
+  ###
   ###
   it 'caches resources by default',(done)->
     assetManager.addParser("stl", STLParser)

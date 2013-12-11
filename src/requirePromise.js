@@ -1,7 +1,24 @@
-var NativeModule = require('native_module');
-var fs = require('fs');
+//var NativeModule = require('native_module');
+//var fs = require('fs');
 var Q = require('q');
 
+function requirePromise(moduleName)
+{
+  var deferred = Q.defer();
+  try
+  {
+    deferred.resolve(require(moduleName));
+  }
+  catch(error)
+  {
+    deferred.reject( error );
+  }
+
+  return deferred.promise;
+}
+
+module.exports = requirePromise;
+/*
 if(!require.async) require.async = function (path, callback) { module.exports(path, this, callback); } // Comment out if you dislike using globals
 module.exports = function(request, parent, callback) {
   var deferred = Q.defer();
@@ -27,4 +44,4 @@ module.exports = function(request, parent, callback) {
 
 
   return defferred.promise;
-}
+}*/

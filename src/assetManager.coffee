@@ -4,14 +4,17 @@ Q = require('q')
 logger = require("./logger.coffee")
 logger.level = "info"
 
+requireP = require("./requirePromise");
+
+
 #TODO: add loading from git repos , with optional tag, commit, hash, branch etc (similar to npm dependencies)
 #TODO: perhaps we should seperate store TYPE (local , xhr, dropbox) from store NAME (the root uri ?)
 
 
 #TODO: remove this, for testing for now
-stlParser = require("./STLParser_test")
-amfParser = require("./AMFParser_test")
-xhrStore = require("./xhrStore_test.coffee")
+#stlParser = require("./STLParser_test")
+#amfParser = require("./AMFParser_test")
+#xhrStore = require("./xhrStore_test.coffee")
 
 ###*
  *Manager for lifecyle of assets: load, store unload 
@@ -26,10 +29,6 @@ class AssetManager
   	
   	#extensions of code file names (do not need parsing, but more complex evaluating !!)
   	@codeExtensions = ["coffee","litcoffee","ultishape","scad"]
-
-  	@addParser("stl", stlParser)
-  	@addParser("amf", amfParser)
-  	@stores["xhr"] = new xhrStore()
   
   _parseFileUri: ( fileUri )->
     #extract store, file path etc
@@ -122,11 +121,22 @@ class AssetManager
     
     if not (filename of @assetCache)
       extension = filename.split(".").pop().toLowerCase()
-      #load raw data from file, get a deferred
-      loaderDeferred = store.read(filename)
-      
+
+      #STEP1: dynamically "require" the adequate parser
+      #parser = @parsers[ extension ]
+      parserName = extension.toUpperCase()+"Parser"
+      parserPromise = requireP( "./"+parserName )
+      parserPromise
+      .then (parserKlass) =>
+        console.log("found parser",parserName,parserKlass)
+      .fail (error) =>
+        console.log("bla",error)
+        deferred.reject( {uri:fileUri, error:"failed to find correct parser"} )
+      #Step2: load raw data from file, get a promise
+      rawDataPromise = store.read(filename)
+      console.log("pouet")
       #loadedResource 
-      loaderDeferred
+      rawDataPromise
       .then (loadedResource) =>
         deferred.notify( "starting parsing" )
         if extension not in @codeExtensions
@@ -139,17 +149,15 @@ class AssetManager
           @assetCache[ fileUri ] = loadedResource
           
         #and return it
-        #deferred.resolve( loadedResource )  
-        #TODO: alternative: can be practical so we can use the deferred directly : [fileUri, loadedResource]
+        #TODO: should return a "resource" : with the uri, metadata, the parsed data etc
         deferred.resolve({uri:fileUri, resource:loadedResource})  
       
       .progress ( progress ) =>
           deferred.notify( progress )
           logger.info "got some progress", progress
       .fail (error) =>
-         console.log("fail in second step")         
-         #TODO: alternative: can be practical so we can use the deferred directly : [fileUri, loadedResource]
-         deferred.reject( {uri:fileUri, error:error} )
+         console.log("fail in data reading step",error) 
+         deferred.reject( {uri:fileUri, error:error.message} )
     else
       #the resource was already loaded, return it 
       loadedResource = @assetCache[filename]
