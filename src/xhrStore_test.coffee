@@ -1,13 +1,12 @@
 'use strict'
 Q = require "q"
-fs = require "fs"
 path = require "path"
 #mime = require "mime"
 
-if not window?
-  #if (not XMLHttpRequest?)
-  console.log(" on NODE")
-  XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+isNode = typeof global != "undefined" and {}.toString.call(global) == '[object global]'
+
+if(isNode)
+  XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest
 else
   XMLHttpRequest = window.XMLHttpRequest
 

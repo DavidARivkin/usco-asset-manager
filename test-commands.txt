@@ -18,3 +18,12 @@ browserify -x q -x path -x xmlhttprequest -i xmlhttprequest -r ./src/assetManage
 NOTE:
   removed the three.js depency from bower.json for now (too big)
     "three": "mrdoob/three.js#master"
+
+MORE NOTES:
+  - in order to get things working as expected (dynamic parser loading included)
+   - remove the "require ('three') call either before or after using browserify
+   - remove the require 'XMLHttpRequest' call in xhrStore 
+  - as you are most likely noting , this means there are issues with the way we deal with "conditional" requires
+
+browserify -x q -x path -i xmlhttprequest -r ./src/xhrStore_test:usco-xhrStore -t coffeeify --extension '.coffee' > xhrStore.js
+browserify -x q -x path -i three -r ./specs/STLParser:STLParser -t coffeeify > build/STLParser.js
