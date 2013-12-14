@@ -21,17 +21,21 @@ if detectEnv.isNode
 #TODO: should this be "asset??"
 class Resource
   constructor:(uri)->
-    console.log("uri",uri)
     @name = uri.split("/").pop()
     @data = null
     @error = null
+
+    @rawData = null #data before processing : should not always be kept
+
+    @size = 0
+    @loaded = false
 
     @fetchProgress = 10;
     @parseProgress = 0;
     @totalRawSize = 0;
 
     @totalDisplaySize = ""#TODO: remove this, ui only
-    @loaded = false
+
 
 ###*
  *Manager for lifecyle of assets: load, store unload 
@@ -76,7 +80,7 @@ class AssetManager
       logger.debug("fullPath (from absolute)", fileName)
       return fileName
     
-    #logger.debug("relative path: ", fileName)
+    logger.debug("relative path: ", fileName)
     #path is relative
     rootUri = parentUri or store.rootUri or ""
     fileName = path.normalize(fileName)
@@ -93,7 +97,6 @@ class AssetManager
       fullPath = path.join( rootUri, fileName )
       
     logger.debug("fullPath (from relative)", fullPath)
-    
     return fullPath
   
   addParser:( extension, parser )=>
@@ -110,7 +113,8 @@ class AssetManager
   load: ( fileUri, parentUri, cachingParams  )->
     #load resource, store it in resource map, return it for use
     parentUri = parentUri or null
-    transient = if cachingParams? then cachingParams.transient else false    
+    transient = if cachingParams? then cachingParams.transient else false
+    keepRawData = if cachingParams? then cachingParams.keepRawData else false
     
     deferred = Q.defer()
     
@@ -148,16 +152,20 @@ class AssetManager
         rawDataPromise
         .then (loadedResource) =>
           deferred.notify( "starting parsing" )
+          resource.rawData = if keepRawData then loadedResource else null
           loadedResource = parser.parse(loadedResource)
           resource.data = loadedResource
+          resource.loaded = true
 
           if not transient #if we are meant to hold on to this resource, cache it
             @assetCache[ fileUri ] = resource
-
+          
           deferred.resolve resource
         .progress ( progress ) =>
-            deferred.notify( progress )
             logger.info "got some progress", progress
+            deferred.notify( progress )
+            resource.size = progress.total
+            
         .fail (error) =>
            logger.error("failure in data reading step",error) 
            resource.error = error.message

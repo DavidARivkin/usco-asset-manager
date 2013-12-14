@@ -12,7 +12,6 @@
   "dependencies": {
     "q": "~0.9.6",
     "coffee-script": "~1.6.3",
-    "logerize": "0.0.2",
     "composite-detect": "0.0.3",
     "minilog": "~2.0.2"
   },
@@ -20,12 +19,9 @@
     "jasmine-node": "1.10.2",
     "browserify": "",
     "coffeeify": "",
-    "coffeeify-redux": "",
     "watchify": "",
     "beefy": "",
-    "browserify-shim": "",
     "uglify-js": "~2.4.0",
-    "logerize": "0.0.2",
     "nock": "~0.25.0"
   },
   "scripts": {

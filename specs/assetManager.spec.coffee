@@ -93,8 +93,25 @@ describe "AssetManager", ->
     
     assetManager.load( stlFileName, null, {transient:true} ).done (loadedResource) =>
       expect(assetManager.assetCache).toEqual({})
-      done()    
-  
+      done() 
+
+  it 'can keep the raw(not parsed) data',(done)->
+    assetManager.addParser("stl", STLParser)
+    stlFileName = "dummy:specs/data/cube.stl"
+    expRawData = fs.readFileSync( "specs/data/cube.stl", 'utf8' )    
+    
+    assetManager.load( stlFileName, null, {keepRawData:true} ).done (loadedResource) =>
+      expect(loadedResource.rawData).toEqual( expRawData )
+      done() 
+
+  it 'returns a resource object for easier tracking of reading data',(done)->
+    assetManager.addParser("stl", STLParser)
+    stlFileName = "dummy:specs/data/cube.stl"
+    
+    assetManager.load( stlFileName ).done (loadedResource) =>
+      expect(loadedResource.loaded).toBe( true )
+      expect(loadedResource.size).toBe( 0 )
+      done()   
 
   ###
   it 'can resolve absolute and relative file paths, from different stores',(done)->
