@@ -10,7 +10,7 @@ if detectEnv.isModule
 
 if detectEnv.isBrowser
   Minilog.pipe(Minilog.backends.console.formatClean).pipe(Minilog.backends.console)
-  logger = Minilog('xhr-store')
+  logger = Minilog('asset-manager')
 
 if detectEnv.isNode
   Minilog.pipe(Minilog.backends.console.formatColor).pipe(Minilog.backends.console)
