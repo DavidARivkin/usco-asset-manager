@@ -1,13 +1,22 @@
 'use strict'
-path = require('path')
-Q = require('q')
-logger = require("./logger.coffee")
-logger.level = "info"
-requireP = require("./requirePromise")
+path = require 'path'
+Q = require 'q'
+detectEnv = require "composite-detect"
+requireP = require "./requirePromise"
+
+if detectEnv.isModule
+  Minilog=require("minilog")
+  logger = Minilog('asset-manager')
+
+if detectEnv.isBrowser
+  Minilog.pipe(Minilog.backends.console.formatClean).pipe(Minilog.backends.console)
+  logger = Minilog('xhr-store')
+
+if detectEnv.isNode
+  Minilog.pipe(Minilog.backends.console.formatColor).pipe(Minilog.backends.console)
 
 #TODO: add loading from git repos , with optional tag, commit, hash, branch etc (similar to npm dependencies)
 #TODO: perhaps we should seperate store TYPE (local , xhr, dropbox) from store NAME (the root uri ?)
-
 
 #TODO: should this be "asset??"
 class Resource

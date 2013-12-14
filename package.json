@@ -12,7 +12,9 @@
   "dependencies": {
     "q": "~0.9.6",
     "coffee-script": "~1.6.3",
-    "logerize": "0.0.2"
+    "logerize": "0.0.2",
+    "composite-detect": "0.0.3",
+    "minilog": "~2.0.2"
   },
   "devDependencies": {
     "jasmine-node": "1.10.2",
