@@ -21,6 +21,7 @@ if detectEnv.isNode
 #TODO: should this be "asset??"
 class Resource
   constructor:(uri)->
+    @uri = uri
     @name = uri.split("/").pop()
     @data = null
     @error = null

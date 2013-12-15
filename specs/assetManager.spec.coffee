@@ -109,6 +109,8 @@ describe "AssetManager", ->
     stlFileName = "dummy:specs/data/cube.stl"
     
     assetManager.load( stlFileName ).done (loadedResource) =>
+      expect(loadedResource.uri).toBe( "dummy:specs/data/cube.stl" )
+      expect(loadedResource.name).toBe( "cube.stl" )
       expect(loadedResource.loaded).toBe( true )
       expect(loadedResource.size).toBe( 0 )
       done()   
