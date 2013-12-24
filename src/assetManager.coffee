@@ -22,11 +22,16 @@ if detectEnv.isNode
 class Resource
   constructor:(uri)->
     @uri = uri
-    @name = uri.split("/").pop()
+    _uriElems = uri.split("?")
+    @name = _uriElems.shift().split("/").pop()
+    @ext = @name.split(".").pop().toLowerCase()
+    @queryParams = _uriElems.pop()
+
     @data = null
     @error = null
 
     @rawData = null #data before processing : should not always be kept
+    @rawDataType = null
 
     @size = 0
     @loaded = false
@@ -141,7 +146,7 @@ class AssetManager
       throw new Error("No store named #{storeName}")
     
     if not (filename of @assetCache)
-      extension = filename.split(".").pop().toLowerCase()
+      extension = resource.ext #filename.split(".").pop().toLowerCase()
       
       #if extension not in @codeExtensions
       parserPromise = @_loadParser( extension )

@@ -11,6 +11,10 @@ nock("https://raw.github.com").get('/kaosat-dev/repBug/master/cad/stl/femur.stl'
 .times(4)
 .reply(200,fs.readFileSync(mockData))
 
+nock("https://raw.github.com").get('/kaosat-dev/repBug/master/cad/stl/femur.stl?size=2&diameter=4')
+.times(4)
+.reply(200,fs.readFileSync(mockData))
+
 
 #TODO: handle progress , errors
 class DummyXHRStore

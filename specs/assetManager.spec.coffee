@@ -63,6 +63,17 @@ describe "AssetManager", ->
       expect(loadedResource.data).not.toEqual(null)
       done()
 
+  it 'can handle uris with query parameters',(done)->
+    assetManager.addParser("stl", STLParser)
+
+    fileUri = "https://raw.github.com/kaosat-dev/repBug/master/cad/stl/femur.stl?size=2&diameter=4"
+    assetManager.load( fileUri ).done ( loadedResource ) =>
+      expect( loadedResource.uri ).not.toEqual(null)
+      expect( loadedResource.name ).toEqual("femur.stl")
+      expect( loadedResource.queryParams ).toEqual("size=2&diameter=4")
+      done()
+
+
   it 'can load resources from different stores',(done)->
     assetManager.addParser("stl", STLParser)
     
