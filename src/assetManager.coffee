@@ -126,6 +126,7 @@ class AssetManager
     
     if not fileUri?
       throw new Error( "Invalid file name : #{fileUri}" )
+    #deferred.reject( "Invalid file name : #{fileUri}" )
      
     #resolve full path
     fileUri = @_toAbsoluteUri(fileUri, parentUri)
@@ -144,17 +145,25 @@ class AssetManager
     store = @stores[ storeName ]
     if not store
       throw new Error("No store named #{storeName}")
+
+    extension = resource.ext
+    #if not @parsers[ extension ]
+    #  throw new Error("No parser for #{extension}")
     
     if not (filename of @assetCache)
-      extension = resource.ext #filename.split(".").pop().toLowerCase()
-      
       #if extension not in @codeExtensions
       parserPromise = @_loadParser( extension )
 
       parserPromise
       .then (parser) =>
+        #get prefered input data type for parser/extension
+        if parser.inputDataType?
+          inputDataType = parser.inputDataType
+          rawDataPromise = store.read( filename , {dataType:inputDataType})
+        else
+          rawDataPromise = store.read( filename )
         #load raw data from uri/file, get a promise
-        rawDataPromise = store.read(filename)
+        
         rawDataPromise
         .then (loadedResource) =>
           deferred.notify( "starting parsing" )
