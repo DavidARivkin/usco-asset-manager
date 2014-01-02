@@ -5,6 +5,7 @@ fs   = require "fs"
 AssetManager = require "../src/assetManager"
 STLParser = require "./STLParser"
 OBJParser = require "./OBJParser"
+OBJParserAsync = require "./OBJParserAsync"
 
 DummyStore = require "./dummyStore"
 DummyXHRStore = require "./dummyXHRStore"
@@ -63,16 +64,21 @@ describe "AssetManager", ->
       expect(loadedResource.data).not.toEqual(null)
       done()
 
-  it 'can handle uris with query parameters',(done)->
+  it 'can handle sync and async parsers',(done)->
+    storeName = "dummy"
+    
     assetManager.addParser("stl", STLParser)
+    assetManager.addParser("obj", OBJParserAsync)
+    
+    stlFileName = "dummy:specs/data/cube.stl"
+    objFileName = "dummy:specs/data/cube.obj"
+    
+    assetManager.load( stlFileName, {transient:true} ).done (loadedResource) =>
+      expect(loadedResource.data).not.toEqual(null)
 
-    fileUri = "https://raw.github.com/kaosat-dev/repBug/master/cad/stl/femur.stl?size=2&diameter=4"
-    assetManager.load( fileUri ).done ( loadedResource ) =>
-      expect( loadedResource.uri ).not.toEqual(null)
-      expect( loadedResource.name ).toEqual("femur.stl")
-      expect( loadedResource.queryParams ).toEqual("size=2&diameter=4")
+    assetManager.load( objFileName, {transient:true} ).done (loadedResource) =>
+      expect(loadedResource.data).not.toEqual(null)
       done()
-
 
   it 'can load resources from different stores',(done)->
     assetManager.addParser("stl", STLParser)
@@ -114,6 +120,16 @@ describe "AssetManager", ->
     assetManager.load( stlFileName, null, {keepRawData:true} ).done (loadedResource) =>
       expect(loadedResource.rawData).toEqual( expRawData )
       done() 
+
+  it 'can handle uris with query parameters',(done)->
+    assetManager.addParser("stl", STLParser)
+
+    fileUri = "https://raw.github.com/kaosat-dev/repBug/master/cad/stl/femur.stl?size=2&diameter=4"
+    assetManager.load( fileUri ).done ( loadedResource ) =>
+      expect( loadedResource.uri ).not.toEqual(null)
+      expect( loadedResource.name ).toEqual("femur.stl")
+      expect( loadedResource.queryParams ).toEqual("size=2&diameter=4")
+      done()
 
   it 'returns a resource object for easier tracking of reading data',(done)->
     assetManager.addParser("stl", STLParser)

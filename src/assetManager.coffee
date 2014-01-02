@@ -168,14 +168,23 @@ class AssetManager
         .then (loadedResource) =>
           deferred.notify( "starting parsing" )
           resource.rawData = if keepRawData then loadedResource else null
-          loadedResource = parser.parse(loadedResource)
-          resource.data = loadedResource
-          resource.loaded = true
 
-          if not transient #if we are meant to hold on to this resource, cache it
-            @assetCache[ fileUri ] = resource
-          
-          deferred.resolve resource
+          #parsedPromise = p
+          loadedResource = parser.parse(loadedResource)
+          #either data or promise for data
+      
+          #Q.when(loadedResource
+
+          Q.when loadedResource, (value)=>
+            loadedResource= value
+            resource.data = loadedResource
+            resource.loaded = true
+
+            if not transient #if we are meant to hold on to this resource, cache it
+              @assetCache[ fileUri ] = resource
+            
+            deferred.resolve resource
+
         .progress ( progress ) =>
             logger.info "got some progress", progress
             deferred.notify( progress )
