@@ -16,8 +16,6 @@ How to generate browser/polymer.js version (with require support):
 ------------------------------------------------------------------
 Type: 
 
-    browserify stl-serializer.js -r ./stl-serializer.js:stl-serializer -o lib/stl-serializer.js -x composite-detect -x three
-
     browserify -x path -x url -x q -x composite-detect -x minilog  -r ./src/assetManager.coffee:AssetManager -t coffeeify --extension '.coffee' > lib/asset-manager.js
 
 
