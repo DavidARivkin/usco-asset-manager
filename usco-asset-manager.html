@@ -1,0 +1,38 @@
+<link rel="import" href="../polymer/polymer.html"> 
+
+<link rel="import" href="usco-parser-base.html"> 
+<link rel="import" href="usco-serializer-base.html"> 
+
+<script src="lib/usco-asset-manager.js"></script>
+
+<polymer-element name="usco-asset-manager">
+  <template>
+  </template>
+  <script>Polymer('usco-asset-manager',{
+      created:function()
+      {
+        var AssetManager = require("AssetManager");
+        this.assetManager = new AssetManager();
+      },
+      ready: function() {
+      },
+      enteredView:function()
+      {
+        this.super();
+      },
+      //public api
+      addStore:function( storeElement )
+      {
+        console.log("adding store", storeElement.localName);
+      },
+      addParser:function( parserElement )
+      {
+        console.log("adding parser", parserElement.localName);
+      },
+      addSerializer:function( serializerElement )
+      {
+        console.log("adding serializer", serializerElement.localName);
+      }
+    });
+  </script>
+</polymer-element>

@@ -1,0 +1,30 @@
+<link rel="import" href="../polymer/polymer.html"> 
+
+<polymer-element name="usco-parser-base">
+  <script>Polymer('usco-parser-base',{
+      parser:null,
+      enteredView:function()
+      {
+        this.super();
+        this.addToParent();
+      },
+      //node insertion methods
+      addToParent:function()
+      {
+        if (this.parentNode.addParser ) {
+          this.__objectParent = this.parentNode;
+          this.parentNode.addParser( this );
+          //var parentName = this.parentNode.localName;
+          //console.log('[%s]: request adding to [%s]', this.localName + (this.id ? '#' + this.id : ''), parentName);
+        }
+      },
+      removeFromParent:function()
+      {
+        if (this.__objectParent) {
+          this.__objectParent.removeParser(this);
+          this.__objectParent = null;
+        }
+      }
+    });
+  </script>
+</polymer-element>
