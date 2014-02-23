@@ -203,7 +203,7 @@ class AssetManager
       loadedResource = @assetCache[filename]
       deferred.resolve( loadedResource )
       
-    return deferred.promise
+    return deferred
 
   _loadParser:( extension )=>
     parser = @parsers[ extension ]
