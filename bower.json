@@ -4,7 +4,9 @@
   "private": true,
   "ignore": [
     "specs/",
-    "src"
+    "src",
+    "build",
+    "element"
   ],
   "dependencies": {
     "platform": "Polymer/platform#master",
