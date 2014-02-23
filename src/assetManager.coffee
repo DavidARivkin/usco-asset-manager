@@ -107,7 +107,7 @@ class AssetManager
   
   addParser:( extension, parser )=>
     #add a parser
-    @parsers[extension] = new parser()
+    @parsers[extension] = parser
   
   ###* 
    * fileUri : path to the file, starting with the node prefix

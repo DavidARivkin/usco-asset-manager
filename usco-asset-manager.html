@@ -9,6 +9,7 @@
   <template>
   </template>
   <script>Polymer('usco-asset-manager',{
+      storesTimeout:0,
       created:function()
       {
         var AssetManager = require("AssetManager");
@@ -28,10 +29,16 @@
       addParser:function( parserElement )
       {
         console.log("adding parser", parserElement.localName);
+        var extension = parserElement.localName.split("-").shift();
+        this.assetManager.addParser(extension, parserElement.parser );
       },
       addSerializer:function( serializerElement )
       {
         console.log("adding serializer", serializerElement.localName);
+      },
+      loadResource:function( uri, options )
+      {
+        this.assetManager.load( uri , options )
       }
     });
   </script>
