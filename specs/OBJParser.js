@@ -7,10 +7,7 @@ var isNode = typeof global !== "undefined" && {}.toString.call(global) == '[obje
 if(isNode) THREE = require( 'three' ); 
 
 
-THREE.OBJParser = function ( manager ) {
-
-	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
-
+THREE.OBJParser = function ( ) {
 };
 
 THREE.OBJParser.prototype = {

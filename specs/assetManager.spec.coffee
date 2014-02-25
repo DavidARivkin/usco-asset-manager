@@ -14,84 +14,98 @@ DummyXHRStore = require "./dummyXHRStore"
 describe "AssetManager", ->
   assetManager = null
   stores = []
+  stlParser = null
   
   beforeEach ->
     stores["dummy"] = new DummyStore()
     stores["xhr"] = new DummyXHRStore()
     assetManager = new AssetManager( stores )
+    stlParser = new STLParser()
   
   it 'should fail to load resources with unvalid uris gracefully',(done)->
-    assetManager.addParser("stl", STLParser)
+    assetManager.addParser("stl", new STLParser())
     
     fileUri = "dummy:specs/femur.stl"
-    assetManager.load( fileUri ).catch ( error ) =>
+    assetManager.load( fileUri ).promise.catch ( error ) =>
       expect(error.error).toEqual("specs/femur.stl not found")
       done()
   , 400
   
   it 'should fail to load resources with no valid parsers gracefully',(done)->
     fileUri = "dummy:specs/data/femur.ctm"
-    assetManager.load( fileUri ).catch ( error ) =>
+    assetManager.load( fileUri ).promise.catch ( error ) =>
       expect(error.error).toEqual("No parser found for ctm file format")
       done()
   , 400
-
+  
+  it 'should fail to load resources with no valid store gracefully',(done)->
+    fileUri = "foo:specs/data/femur.ctm"
+    promise = assetManager.load( fileUri ).promise
+    console.log("promise", promise)
+    promise.catch ( error ) =>
+      expect(error.message).toEqual("No store named foo")
+      done()
+  , 400
+  
   it 'can load parsers dynamically based on resource extension',(done)->
     try
       fs.symlinkSync(path.resolve("./specs/STLParser.js"),"node_modules/STLParser.js")
 
     fileUri = "dummy:specs/data/femur.stl"
-    assetManager.load( fileUri ).then ( loadedResource ) =>
+    assetManager.load( fileUri ).promise.then ( loadedResource ) =>
       expect( loadedResource.data ).not.toEqual(null)
       done()
     try
       fs.unlinkSync("node_modules/STLParser.js")
   , 400
 
+
   it 'can handle various file types via settable parsers',(done)->
     storeName = "dummy"
     
-    assetManager.addParser("stl", STLParser)
-    assetManager.addParser("obj", OBJParser)
-    
-    stlFileName = "dummy:specs/data/cube.stl"
-    amfFileName = "dummy:specs/data/cube.obj"
-    
-    assetManager.load( stlFileName, {transient:true} ).done (loadedResource) =>
-      expect(loadedResource.data).not.toEqual(null)
-
-    assetManager.load( amfFileName, {transient:true} ).done (loadedResource) =>
-      expect(loadedResource.data).not.toEqual(null)
-      done()
-
-  it 'can handle sync and async parsers',(done)->
-    storeName = "dummy"
-    
-    assetManager.addParser("stl", STLParser)
-    assetManager.addParser("obj", OBJParserAsync)
+    assetManager.addParser("stl", stlParser )
+    assetManager.addParser("obj", new OBJParser() )
     
     stlFileName = "dummy:specs/data/cube.stl"
     objFileName = "dummy:specs/data/cube.obj"
     
-    assetManager.load( stlFileName, {transient:true} ).done (loadedResource) =>
+    assetManager.load( stlFileName, {transient:true} ).promise.done (loadedResource) =>
       expect(loadedResource.data).not.toEqual(null)
 
-    assetManager.load( objFileName, {transient:true} ).done (loadedResource) =>
+    assetManager.load( objFileName, {transient:true} ).promise.done (loadedResource) =>
+      expect(loadedResource.data).not.toEqual(null)
+      done()
+  
+  it 'can handle sync and async parsers',(done)->
+    storeName = "dummy"
+    
+    assetManager.addParser("stl", stlParser)
+    assetManager.addParser("obj", new OBJParserAsync() )
+    
+    stlFileName = "dummy:specs/data/cube.stl"
+    objFileName = "dummy:specs/data/cube.obj"
+    
+    assetManager.load( stlFileName, {transient:true} ).promise.done (loadedResource) =>
+      expect(loadedResource.data).not.toEqual(null)
+
+    assetManager.load( objFileName, {transient:true} ).promise.done (loadedResource) =>
       expect(loadedResource.data).not.toEqual(null)
       done()
 
+  
   it 'can load resources from different stores',(done)->
-    assetManager.addParser("stl", STLParser)
+    assetManager.addParser("stl", stlParser)
     
     fileUri = "dummy:specs/data/cube.stl"
-    assetManager.load( fileUri ).done ( loadedResource ) =>
+    assetManager.load( fileUri ).promise.done ( loadedResource ) =>
       expect( loadedResource.data ).not.toEqual(null)
 
     fileUri = "https://raw.github.com/kaosat-dev/repBug/master/cad/stl/femur.stl"
-    assetManager.load( fileUri ).done ( loadedResource ) =>
+    assetManager.load( fileUri ).promise.done ( loadedResource ) =>
       expect( loadedResource.data ).not.toEqual(null)
       done()
-
+      
+  ###
   it 'caches resources by default',(done)->
     assetManager.addParser("stl", STLParser)
     stlFileName = "dummy:specs/data/cube.stl"
@@ -141,6 +155,8 @@ describe "AssetManager", ->
       expect(loadedResource.loaded).toBe( true )
       expect(loadedResource.size).toBe( 0 )
       done()   
+      
+  ###
 
   ###
   it 'can resolve absolute and relative file paths, from different stores',(done)->

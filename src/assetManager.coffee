@@ -2,7 +2,9 @@
 path = require 'path'
 Q = require 'q'
 detectEnv = require "composite-detect"
+
 requireP = require "./requirePromise"
+Resource = require "./resource.coffee"
 
 if detectEnv.isModule
   Minilog=require("minilog")
@@ -18,44 +20,21 @@ if detectEnv.isNode
 #TODO: add loading from git repos , with optional tag, commit, hash, branch etc (similar to npm dependencies)
 #TODO: perhaps we should seperate store TYPE (local , xhr, dropbox) from store NAME (the root uri ?)
 
-#TODO: should this be "asset??"
-class Resource
-  constructor:(uri)->
-    @uri = uri
-    _uriElems = uri.split("?")
-    @name = _uriElems.shift().split("/").pop()
-    @ext = @name.split(".").pop().toLowerCase()
-    @queryParams = _uriElems.pop()
-
-    @data = null
-    @error = null
-
-    @rawData = null #data before processing : should not always be kept
-    @rawDataType = null
-
-    @size = 0
-    @loaded = false
-
-    @fetchProgress = 10;
-    @parseProgress = 0;
-    @totalRawSize = 0;
-
-    @totalDisplaySize = ""#TODO: remove this, ui only
-
-
 ###*
  *Manager for lifecyle of assets: load, store unload 
  *For external code files, stl, amf, textures, fonts etc
 *###
 class AssetManager
   constructor:( stores )->
-  	#manages assets (files)
-  	@stores = stores or {}
-  	@parsers = {}
-  	@assetCache = {}
-  	
-  	#extensions of code file names (do not need parsing, but more complex evaluating !!)
-  	@codeExtensions = ["coffee","litcoffee","ultishape","scad"]
+    #manages assets (files)
+    @stores      = stores or {}
+    @parsers     = {}
+    @serializers = {}
+
+    @assetCache = {}
+    
+    #extensions of code file names (do not need parsing, but more complex evaluating !!)
+    @codeExtensions = ["coffee","litcoffee","ultishape","scad"]
   
   _parseFileUri: ( fileUri )->
     #extract store, file path etc
@@ -105,9 +84,17 @@ class AssetManager
     logger.debug("fullPath (from relative)", fullPath)
     return fullPath
   
+  addStore:( name, store )=>
+    #add a store
+    @stores[name] = store
+
   addParser:( extension, parser )=>
     #add a parser
     @parsers[extension] = parser
+
+  addSerializer:( extension, serializer )=>
+    #add a serializer
+    @serializers[extension] = serializer
   
   ###* 
    * fileUri : path to the file, starting with the node prefix
@@ -125,8 +112,8 @@ class AssetManager
     deferred = Q.defer()
     
     if not fileUri?
-      throw new Error( "Invalid file name : #{fileUri}" )
-    #deferred.reject( "Invalid file name : #{fileUri}" )
+      deferred.reject( "Invalid file name : #{fileUri}" )
+      #throw new Error( "Invalid file name : #{fileUri}" )
      
     #resolve full path
     fileUri = @_toAbsoluteUri(fileUri, parentUri)
@@ -139,16 +126,17 @@ class AssetManager
     #STEP3: no errors yet : fetch the data
     #STEP4: no errors yet : parse the data, return resouce
     
-    resource = new Resource(fileUri)
+    resource = new Resource( fileUri )
 
     #get store instance , if it exists
     store = @stores[ storeName ]
+    
     if not store
-      throw new Error("No store named #{storeName}")
+      error = new Error("No store named #{storeName}")
+      deferred.reject( error )
+      return deferred
 
     extension = resource.ext
-    #if not @parsers[ extension ]
-    #  throw new Error("No parser for #{extension}")
     
     if not (filename of @assetCache)
       #if extension not in @codeExtensions
@@ -169,11 +157,7 @@ class AssetManager
           deferred.notify( "starting parsing" )
           resource.rawData = if keepRawData then loadedResource else null
 
-          #parsedPromise = p
           loadedResource = parser.parse(loadedResource)
-          #either data or promise for data
-      
-          #Q.when(loadedResource
 
           Q.when loadedResource, (value)=>
             loadedResource= value
@@ -263,6 +247,6 @@ class AssetManager
     
     return deferred.promise
   
-	
+  
 module.exports = AssetManager
 

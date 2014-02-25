@@ -24,9 +24,8 @@
  * 	loader.load( './models/stl/slotted_disk.stl' );
  */
 
-var isNode = typeof global !== "undefined" && {}.toString.call(global) == '[object global]';
 
-if(isNode) THREE = require( 'three' ); 
+var THREE = require( 'three' ); 
 
 THREE.STLParser = function () {
   this.outputs = ["geometry"]; //to be able to auto determine data type(s) fetched by parser
@@ -344,4 +343,4 @@ if ( typeof DataView === 'undefined'){
 
 }
 
-if (isNode) module.exports = THREE.STLParser;
+module.exports = THREE.STLParser;
