@@ -16,14 +16,4 @@ How to generate browser/polymer.js version (with require support):
 ------------------------------------------------------------------
 Type: 
 
-    browserify -x path -x url -x q -x composite-detect -x minilog  -r ./src/assetManager.coffee:AssetManager -t coffeeify --extension '.coffee' > lib/asset-manager.js
-
-
-
-then replace (manually for now) all entries like this one in the generated file:
-
-  "composite-detect":"awZPbp"
-
-with the correct module names, ie:
-
-   "composite-detect":"composite-detect"
+   grunt build-browser-lib
