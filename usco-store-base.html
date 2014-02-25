@@ -9,14 +9,17 @@
         this.super();
         this.addToParent();
       },
+      //attribue change handlers
+      timeoutChanged:function()
+      {
+        this.store.timeout = this.timeout;
+      },
       //node insertion methods
       addToParent:function()
       {
         if (this.parentNode.addStore ) {
           this.__objectParent = this.parentNode;
           this.parentNode.addStore( this );
-          //var parentName = this.parentNode.localName;
-          //console.log('[%s]: request adding to [%s]', this.localName + (this.id ? '#' + this.id : ''), parentName);
         }
       },
       removeFromParent:function()

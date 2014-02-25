@@ -22,26 +22,47 @@
       {
         this.super();
       },
+      leftView:function()
+      {
+        this.assetManager = null;
+      },
       //public api
       addStore:function( storeElement )
       {
         console.log("adding store", storeElement.localName);
-        var extension = storeElement.localName.split("-").shift();
-        this.assetManager.stores[extension] = storeElement.store;
+        this.assetManager.addStore( this._getExtension( storeElement ), storeElement.store );
       },
       addParser:function( parserElement )
       {
         console.log("adding parser", parserElement.localName);
-        var extension = parserElement.localName.split("-").shift();
-        this.assetManager.addParser(extension, parserElement.parser );
+        this.assetManager.addParser( this._getExtension( parserElement ), parserElement.parser );
       },
       addSerializer:function( serializerElement )
       {
         console.log("adding serializer", serializerElement.localName);
+        this.assetManager.addSerializer( this._getExtension( serializerElement ), serializerElement.serializer );
+      },
+      removeStore: function( storeElement )
+      {
+        this.assetManager.removeStore( this._getExtension( storeElement ), storeElement.store );
+      },
+      removeParser: function( parser )
+      {
+        this.assetManager.removeParser( this._getExtension( parserElement ), parserElement.parser );
+      },
+      removeSerializer: function( serializer )
+      {
+        this.assetManager.removeSerializer( this._getExtension( serializerElement ), serializerElement.serializer );
       },
       loadResource:function( uri, options )
       {
         return this.assetManager.load( uri , options )
+      },
+      //helpers
+      _getExtension:function( element )
+      {
+        var extension = element.localName.split("-").shift();
+        return extension;
       }
     });
   </script>
