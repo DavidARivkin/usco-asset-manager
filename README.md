@@ -12,8 +12,28 @@ lib/asset-manager.js (browserified version of the above)
 usco-asset-manager.html
 
 
+Notes about stores, parsers, serializers:
+-----------------------------------------
+Parsers:
+=======
+  - all parsers should have a parse() method that returns a deferred 
+that gets resolved with the parsed data 
+
+Serializers:
+============
+  - all serializers should have a serialize() method that returns the
+serialized result
+
+Stores:
+=======
+TODO
+
+
 How to generate browser/polymer.js version (with require support):
 ------------------------------------------------------------------
 Type: 
 
    grunt build-browser-lib
+
+
+
