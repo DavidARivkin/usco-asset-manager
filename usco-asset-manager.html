@@ -1,5 +1,6 @@
 <link rel="import" href="../polymer/polymer.html"> 
 
+<link rel="import" href="usco-store-base.html"> 
 <link rel="import" href="usco-parser-base.html"> 
 <link rel="import" href="usco-serializer-base.html"> 
 
@@ -12,7 +13,7 @@
       storesTimeout:0,
       created:function()
       {
-        var AssetManager = require("AssetManager");
+        var AssetManager = require("asset-manager");
         this.assetManager = new AssetManager();
       },
       ready: function() {
@@ -25,6 +26,8 @@
       addStore:function( storeElement )
       {
         console.log("adding store", storeElement.localName);
+        var extension = storeElement.localName.split("-").shift();
+        this.assetManager.stores[extension] = storeElement.store;
       },
       addParser:function( parserElement )
       {
@@ -38,7 +41,7 @@
       },
       loadResource:function( uri, options )
       {
-        this.assetManager.load( uri , options )
+        return this.assetManager.load( uri , options )
       }
     });
   </script>
