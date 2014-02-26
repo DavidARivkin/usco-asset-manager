@@ -105,46 +105,48 @@ describe "AssetManager", ->
       expect( loadedResource.data ).not.toEqual(null)
       done()
       
-  ###
+
   it 'caches resources by default',(done)->
-    assetManager.addParser("stl", STLParser)
+    assetManager.addParser("stl", stlParser)
     stlFileName = "dummy:specs/data/cube.stl"
     
     expect(assetManager.assetCache).toEqual({})
     
-    assetManager.load( stlFileName ).done (loadedResource) =>
+    assetManager.load( stlFileName ).promise.done (loadedResource) =>
       expect( assetManager.assetCache ).toEqual({"dummy:specs/data/cube.stl":loadedResource})
       done()
-
+  
   it 'does not cache transient resources',(done)->
-    assetManager.addParser("stl", STLParser)
+    assetManager.addParser("stl", stlParser)
     stlFileName = "dummy:specs/data/cube.stl"
     
     expect(assetManager.assetCache).toEqual({})
     
-    assetManager.load( stlFileName, null, {transient:true} ).done (loadedResource) =>
+    assetManager.load( stlFileName, {transient:true} ).promise.done (loadedResource) =>
       expect(assetManager.assetCache).toEqual({})
       done() 
 
   it 'can keep the raw(not parsed) data',(done)->
-    assetManager.addParser("stl", STLParser)
+    assetManager.addParser("stl", stlParser)
     stlFileName = "dummy:specs/data/cube.stl"
     expRawData = fs.readFileSync( "specs/data/cube.stl", 'utf8' )    
     
-    assetManager.load( stlFileName, null, {keepRawData:true} ).done (loadedResource) =>
+    assetManager.load( stlFileName, {keepRawData:true} ).promise.done (loadedResource) =>
       expect(loadedResource.rawData).toEqual( expRawData )
       done() 
-
+      
+  
   it 'can handle uris with query parameters',(done)->
-    assetManager.addParser("stl", STLParser)
+    assetManager.addParser("stl", stlParser)
 
     fileUri = "https://raw.github.com/kaosat-dev/repBug/master/cad/stl/femur.stl?size=2&diameter=4"
-    assetManager.load( fileUri ).done ( loadedResource ) =>
+    assetManager.load( fileUri ).promise.done ( loadedResource ) =>
       expect( loadedResource.uri ).not.toEqual(null)
       expect( loadedResource.name ).toEqual("femur.stl")
       expect( loadedResource.queryParams ).toEqual("size=2&diameter=4")
       done()
 
+  ###
   it 'returns a resource object for easier tracking of reading data',(done)->
     assetManager.addParser("stl", STLParser)
     stlFileName = "dummy:specs/data/cube.stl"

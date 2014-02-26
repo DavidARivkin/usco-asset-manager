@@ -18,7 +18,7 @@ class DummyStore
       #console.log("data",data)
       deferred.resolve(data)
     
-    return deferred.promise
+    return deferred
 
 
 module.exports = DummyStore

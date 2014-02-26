@@ -35,7 +35,7 @@ class DummyXHRStore
       )
     
     req = http.get(uri, onLoad)
-    return deferred.promise
+    return deferred
 
 nock.enableNetConnect()    
     

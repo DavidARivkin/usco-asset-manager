@@ -1,10 +1,10 @@
 'use strict'
-path = require 'path'
 Q = require 'q'
 detectEnv = require "composite-detect"
 
 requireP = require "./requirePromise"
 Resource = require "./resource.coffee"
+pathUtils= require "./pathUtils.coffee"
 
 if detectEnv.isModule
   Minilog=require("minilog")
@@ -36,54 +36,6 @@ class AssetManager
     #extensions of code file names (do not need parsing, but more complex evaluating !!)
     @codeExtensions = ["coffee","litcoffee","ultishape","scad"]
   
-  _parseFileUri: ( fileUri )->
-    #extract store, file path etc
-    #logger.debug "extracting store from", fileUri
-    url = require('url')
-    pathInfo = url.parse( fileUri )
-    storeName = pathInfo.protocol
-    fileName = pathInfo.host  + pathInfo.pathname
-    storeName = storeName.replace(":","")
-    
-    if storeName is null
-      if pathInfo.path[0] is "/"
-        #local fs
-        storeName = "local"
-      else
-        #TODO: deal with relative paths
-    else if storeName is "http" or storeName is "https"
-      storeName = "xhr"
-      fileName = pathInfo.href
-    return [ storeName, fileName ] 
-
-  _toAbsoluteUri:(fileName, parentUri, store)->
-    #normalization test
-    path = require 'path'
-    
-    segments = fileName.split( "/" )
-    if segments[0] != '.' and segments[0] != '..'
-      logger.debug("fullPath (from absolute)", fileName)
-      return fileName
-    
-    logger.debug("relative path: ", fileName)
-    #path is relative
-    rootUri = parentUri or store.rootUri or ""
-    fileName = path.normalize(fileName)
-    isXHr = rootUri.indexOf("http") isnt -1
-    
-    #TODO: this explains WHY it would be a good idea to have path resolving done on a PER STORE basis
-    if isXHr
-      fullPath = rootUri + fileName
-    else
-      #hack to force dirname to work on paths ending with slash
-      rootUri = if rootUri[rootUri.length-1] == "/" then rootUri +="a" else rootUri
-      rootUri = path.normalize(rootUri)
-      rootUri = path.dirname(rootUri)
-      fullPath = path.join( rootUri, fileName )
-      
-    logger.debug("fullPath (from relative)", fullPath)
-    return fullPath
-  
   addStore:( name, store )=>
     #add a store
     @stores[name] = store
@@ -98,27 +50,36 @@ class AssetManager
   
   ###* 
    * fileUri : path to the file, starting with the node prefix
-   * transient : boolean : if true, don't store the resource in cache
-   * parentUri : string : not sure we should have this here : for relative path resolution
-   * caching params : various cachin params : lifespan etc
+   * options: object : additionnal options for loading resource
+   *  options.parentUri : string : not sure we should have this here : for relative path resolution
+   *  options.transient : boolean : if true, don't store the resource in cache, default;false
+   *  options.keepRawData: boolean: if true, keep a copy of the original data (un-parsed)
+   * 
    * If no store is specified, file paths are expected to be relative
   ###
-  load: ( fileUri, parentUri, cachingParams  )->
+  load: ( fileUri, options  )->
     #load resource, store it in resource map, return it for use
-    parentUri = parentUri or null
-    transient = if cachingParams? then cachingParams.transient else false
-    keepRawData = if cachingParams? then cachingParams.keepRawData else false
+    options     = options or {}
+    parentUri   = options.parentUri or null
+    transient   = options.transient or false
+    keepRawData = options.keepRawData or false 
     
     deferred = Q.defer()
     
     if not fileUri?
       deferred.reject( "Invalid file name : #{fileUri}" )
-      #throw new Error( "Invalid file name : #{fileUri}" )
+      return deferred
+
+    if File? and fileUri instanceof File
+      [storeName,filename] = ["desktop", fileUri.name]
+      file = fileUri
+      fileUri = fileUri.name
+    else
+      #resolve full path
+      fileUri = pathUtils.toAbsoluteUri(fileUri, parentUri)
+      [storeName,filename] = pathUtils.parseFileUri( fileUri, parentUri)
      
-    #resolve full path
-    fileUri = @_toAbsoluteUri(fileUri, parentUri)
-    
-    [storeName,filename] = @_parseFileUri( fileUri, parentUri)
+   
     logger.info( "Attempting to load :", filename,  "from store:", storeName )
 
     #STEP1: dynamically "require" the adequate store
@@ -145,14 +106,16 @@ class AssetManager
       parserPromise
       .then (parser) =>
         #get prefered input data type for parser/extension
+        #FIXME: do this more elegantly 
+        fileOrFileName = if storeName is "desktop" then file else filename #if we are dealing with html5 Files (drag & drop etc)
         if parser.inputDataType?
           inputDataType = parser.inputDataType
-          rawDataPromise = store.read( filename , {dataType:inputDataType})
+          rawDataDeferred = store.read( fileOrFileName , {dataType:inputDataType})
         else
-          rawDataPromise = store.read( filename )
+          rawDataDeferred = store.read( fileOrFileName )
+          
         #load raw data from uri/file, get a promise
-        
-        rawDataPromise
+        rawDataDeferred.promise
         .then (loadedResource) =>
           deferred.notify( "starting parsing" )
           resource.rawData = if keepRawData then loadedResource else null
@@ -243,7 +206,6 @@ class AssetManager
   loadProject:( uri )->
     deferred = Q.defer()
     storeName = @_parseStoreName( uri )
-    console.log "storeName", storeName
     
     return deferred.promise
   
