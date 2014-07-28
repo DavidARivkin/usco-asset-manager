@@ -12,6 +12,7 @@ if detectEnv.isModule
 
 if detectEnv.isBrowser
   Minilog.pipe(Minilog.suggest).pipe(Minilog.backends.console.formatClean).pipe(Minilog.backends.console)
+  #.pipe(Minilog.backends.browser)#
   logger = Minilog('asset-manager')
 
 if detectEnv.isNode
@@ -59,10 +60,14 @@ class AssetManager
   ###
   load: ( fileUri, options  )->
     #load resource, store it in resource map, return it for use
-    options     = options or {}
-    parentUri   = options.parentUri or null
-    transient   = options.transient or false
-    keepRawData = options.keepRawData or false 
+    options       = options or {}
+    parentUri     = options.parentUri or null
+    transient     = options.transient or false
+    keepRawData   = options.keepRawData or false 
+    fetchOptions  = options.fetching or {}
+    parseOptions  = options.parsing or {}
+    
+    
     
     deferred = Q.defer()
     
@@ -88,7 +93,6 @@ class AssetManager
     #STEP4: no errors yet : parse the data, return resouce
     
     resource = new Resource( fileUri )
-
     #get store instance , if it exists
     store = @stores[ storeName ]
     
@@ -117,10 +121,10 @@ class AssetManager
         #load raw data from uri/file, get a promise
         rawDataDeferred.promise
         .then (loadedResource) =>
-          deferred.notify( "starting parsing" )
+          deferred.notify( {parsing:0} )
           resource.rawData = if keepRawData then loadedResource else null
 
-          loadedResource = parser.parse(loadedResource)
+          loadedResource = parser.parse loadedResource, parseOptions
 
           Q.when loadedResource, (value)=>
             loadedResource= value
@@ -133,7 +137,7 @@ class AssetManager
             deferred.resolve resource
 
         .progress ( progress ) =>
-            logger.info "got some progress", progress
+            logger.debug "got some progress", JSON.stringify(progress)
             deferred.notify( progress )
             resource.size = progress.total
             
@@ -208,6 +212,15 @@ class AssetManager
     storeName = @_parseStoreName( uri )
     
     return deferred.promise
+    
+  
+  clearResources:(options)->
+    options = options or {}
+    clearCache = options.clearCache or false
+    ###while((deferred=this.resouceDeferreds.pop()) != null){
+      deferred.reject();
+    }###
+    @assetCache = {};
   
   
 module.exports = AssetManager

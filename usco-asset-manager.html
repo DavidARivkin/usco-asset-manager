@@ -6,15 +6,17 @@
 
 <script src="lib/asset-manager.js"></script>
 
-<polymer-element name="usco-asset-manager">
+<polymer-element name="usco-asset-manager" attributes="storesTimeout logLevel">
   <template>
   </template>
   <script>Polymer('usco-asset-manager',{
       storesTimeout:0,
+      logLevel:"warn",
       created:function()
       {
         var AssetManager = require("asset-manager");
         this.assetManager = new AssetManager();
+        this.logLevelChanged(null,this.logLevel);
       },
       ready: function() {
       },
@@ -25,20 +27,32 @@
       {
         this.assetManager = null;
       },
+      //attriube change handlers
+      logLevelChanged:function(oldLogLevel, newLogLevel)
+      {
+        console.log("logLevel changed", newLogLevel)
+        var Minilog=require("minilog");
+        Minilog.suggest.defaultResult = false;
+        Minilog
+          .suggest
+          .clear()
+          .allow('asset-manager',newLogLevel)
+          .deny(new RegExp('.*store.*'), 'warn');
+      },
       //public api
       addStore:function( storeElement )
       {
-        console.log("adding store", storeElement.localName);
+        //console.log("adding store", storeElement.localName);
         this.assetManager.addStore( this._getExtension( storeElement ), storeElement.store );
       },
       addParser:function( parserElement )
       {
-        console.log("adding parser", parserElement.localName);
+        //console.log("adding parser", parserElement.localName);
         this.assetManager.addParser( this._getExtension( parserElement ), parserElement.parser );
       },
       addSerializer:function( serializerElement )
       {
-        console.log("adding serializer", serializerElement.localName);
+        //console.log("adding serializer", serializerElement.localName);
         this.assetManager.addSerializer( this._getExtension( serializerElement ), serializerElement.serializer );
       },
       removeStore: function( storeElement )
