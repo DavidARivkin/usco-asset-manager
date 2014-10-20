@@ -93,6 +93,7 @@ class AssetManager
     #STEP4: no errors yet : parse the data, return resouce
     
     resource = new Resource( fileUri )
+    resource.deferred = deferred
     #get store instance , if it exists
     store = @stores[ storeName ]
     
@@ -117,17 +118,25 @@ class AssetManager
           rawDataDeferred = store.read( fileOrFileName , {dataType:inputDataType})
         else
           rawDataDeferred = store.read( fileOrFileName )
-          
+        
+        deferred.promise.fail ( error ) =>
+          rawDataDeferred.reject( error )
+         
         #load raw data from uri/file, get a promise
         rawDataDeferred.promise
         .then (loadedResource) =>
+          resource.fetched = true
           deferred.notify( {parsing:0} )
           resource.rawData = if keepRawData then loadedResource else null
 
-          loadedResource = parser.parse loadedResource, parseOptions
-
+          resourceDeferred = parser.parse loadedResource, parseOptions
+          loadedResource = resourceDeferred.promise
+          
+          deferred.promise.fail ( error ) =>
+            resourceDeferred.reject( error )
+          
           Q.when loadedResource, (value)=>
-            loadedResource= value
+            loadedResource = value
             resource.data = loadedResource
             resource.loaded = true
 
@@ -138,6 +147,11 @@ class AssetManager
 
         .progress ( progress ) =>
             logger.debug "got some progress", JSON.stringify(progress)
+            console.log progress
+            if "fetching" of progress
+              resource.fetchProgress = progress.fetching
+            if "parsing" of progress
+              resource.parseProgress = progress.parsing
             deferred.notify( progress )
             resource.size = progress.total
             
@@ -152,9 +166,10 @@ class AssetManager
     else
       #the resource was already loaded, return it 
       loadedResource = @assetCache[filename]
-      deferred.resolve( loadedResource )
+      deferred.resolve loadedResource 
       
-    return deferred
+      
+    return resource
 
   _loadParser:( extension )=>
     parser = @parsers[ extension ]

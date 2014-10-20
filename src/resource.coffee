@@ -17,12 +17,14 @@ class Resource
 
     @size = 0
     @loaded = false
+    @fetched = false
 
-    @fetchProgress = 10;
+    @fetchProgress = 0;
     @parseProgress = 0;
     @totalRawSize = 0;
 
     @totalDisplaySize = ""#TODO: remove this, ui only
+    @deferred = null
 
 
 module.exports = Resource
