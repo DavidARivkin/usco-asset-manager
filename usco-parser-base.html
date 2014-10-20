@@ -3,11 +3,11 @@
 <polymer-element name="usco-parser-base">
   <script>Polymer('usco-parser-base',{
       parser:null,
-      enteredView:function()
+      attached:function()
       {
         this.addToParent();
       },
-      leftView:function()
+      detached:function()
       {
         this.removeFromParent();
       },

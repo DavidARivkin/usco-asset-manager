@@ -18,12 +18,7 @@
         this.assetManager = new AssetManager();
         this.logLevelChanged(null,this.logLevel);
       },
-      ready: function() {
-      },
-      enteredView:function()
-      {
-      },
-      leftView:function()
+      detached:function()
       {
         this.assetManager = null;
       },

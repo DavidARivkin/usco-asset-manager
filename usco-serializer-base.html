@@ -3,11 +3,11 @@
 <polymer-element name="usco-serializer-base">
   <script>Polymer('usco-serializer-base',{
       serializer: null,
-      enteredView:function()
+      attached:function()
       {
         this.addToParent();
       },
-      leftView:function()
+      detached:function()
       {
          this.removeFromParent();
       },
