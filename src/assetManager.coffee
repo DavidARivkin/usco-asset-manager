@@ -67,8 +67,6 @@ class AssetManager
     fetchOptions  = options.fetching or {}
     parseOptions  = options.parsing or {}
     
-    
-    
     deferred = Q.defer()
     
     if not fileUri?
@@ -167,7 +165,7 @@ class AssetManager
       #the resource was already loaded, return it 
       loadedResource = @assetCache[filename]
       deferred.resolve loadedResource 
-      
+      return loadedResource
       
     return resource
 
