@@ -96,8 +96,9 @@ class AssetManager
     store = @stores[ storeName ]
     
     if not store
-      error = new Error("No store named #{storeName}")
-      deferred.reject( error )
+      storeNotFoundError = new Error("No store named #{storeName}")
+      storeNotFoundError.name = "storeNotFoundError"
+      deferred.reject( storeNotFoundError )
       return deferred
 
     extension = resource.ext
@@ -145,7 +146,6 @@ class AssetManager
 
         .progress ( progress ) =>
             logger.debug "got some progress", JSON.stringify(progress)
-            console.log progress
             if "fetching" of progress
               resource.fetchProgress = progress.fetching
             if "parsing" of progress
@@ -155,14 +155,20 @@ class AssetManager
             
         .fail (error) =>
            logger.error("failure in data reading step",error) 
-           resource.error = error.message
+           fetchError = new Error( error.message )
+           fetchError.name = "fetchError";
+           resource.error = fetchError
+           
            deferred.reject resource
       .fail (error) =>
         logger.error("failure in getting parser",error) 
-        resource.error = "No parser found for #{extension} file format"
+        parserNotFoundError = new Error( "No parser found for #{extension} file format" )
+        parserNotFoundError.name = "parserNotFoundError"
+        resource.error = parserNotFoundError
         deferred.reject resource
     else
       #the resource was already loaded, return it 
+      logger.info( "resource already in cache, returning cached version" )
       loadedResource = @assetCache[filename]
       deferred.resolve loadedResource 
       return loadedResource
@@ -227,12 +233,15 @@ class AssetManager
     return deferred.promise
     
   
-  clearResources:(options)->
-    options = options or {}
-    clearCache = options.clearCache or false
-    ###while((deferred=this.resouceDeferreds.pop()) != null){
-      deferred.reject();
-    }###
+  clearResources:()->
+    #deferred.reject()  while (deferred = @assetCache.pop())?
+    
+    for k,v of @assetCache
+      resource = @assetCache[k]
+      deferred = resource.deferred
+      deferred.reject() if deferred?
+      delete @assetCache[k]
+      
     @assetCache = {};
   
   
