@@ -59,6 +59,7 @@ class AssetManager
    * If no store is specified, file paths are expected to be relative
   ###
   load: ( fileUri, options  )->
+    #TODO: cleann this all up
     #load resource, store it in resource map, return it for use
     options       = options or {}
     parentUri     = options.parentUri or null
@@ -84,88 +85,89 @@ class AssetManager
      
    
     logger.info( "Attempting to load :", filename,  "from store:", storeName )
+    console.log("here");
 
-    #STEP1: dynamically "require" the adequate store
-    #STEP2: dynamically "require" the adequate parser
     #STEP3: no errors yet : fetch the data
     #STEP4: no errors yet : parse the data, return resouce
     
     resource = new Resource( fileUri )
     resource.deferred = deferred
+    extension = resource.ext
+    
     #get store instance , if it exists
     store = @stores[ storeName ]
-    
     if not store
       storeNotFoundError = new Error("No store named #{storeName}")
       storeNotFoundError.name = "storeNotFoundError"
-      deferred.reject( storeNotFoundError )
-      return deferred
-
-    extension = resource.ext
+      logger.error(storeNotFoundError) 
+      deferred.reject resource
+      resource.error = storeNotFoundError
+      return resource
     
+    #get parser instance , if it exists
+    parser = @parsers[ extension ]
+    if not parser
+      parserNotFoundError = new Error( "No parser found for '#{extension}' file format" )
+      parserNotFoundError.name = "parserNotFoundError"
+      logger.error(parserNotFoundError) 
+      resource.error = parserNotFoundError
+      deferred.reject resource  
+      return resource    
+
     if not (filename of @assetCache)
       #if extension not in @codeExtensions
-      parserPromise = @_loadParser( extension )
+    
+      #get prefered input data type for parser/extension
+      #FIXME: do this more elegantly 
+      fileOrFileName = if storeName is "desktop" then file else filename #if we are dealing with html5 Files (drag & drop etc)
+      if parser.inputDataType?
+        inputDataType = parser.inputDataType
+        rawDataDeferred = store.read( fileOrFileName , {dataType:inputDataType})
+      else
+        rawDataDeferred = store.read( fileOrFileName )
+      
+      deferred.promise.fail ( error ) =>
+        rawDataDeferred.reject( error )
+         
+      #load raw data from uri/file, get a deferred/promise
+      rawDataDeferred.promise
+      .then (loadedResource) =>
+        resource.fetched = true
+        deferred.notify( {parsing:0} )
+        resource.rawData = if keepRawData then loadedResource else null
 
-      parserPromise
-      .then (parser) =>
-        #get prefered input data type for parser/extension
-        #FIXME: do this more elegantly 
-        fileOrFileName = if storeName is "desktop" then file else filename #if we are dealing with html5 Files (drag & drop etc)
-        if parser.inputDataType?
-          inputDataType = parser.inputDataType
-          rawDataDeferred = store.read( fileOrFileName , {dataType:inputDataType})
-        else
-          rawDataDeferred = store.read( fileOrFileName )
+        resourceDeferred = parser.parse loadedResource, parseOptions
+        loadedResource = resourceDeferred.promise
         
         deferred.promise.fail ( error ) =>
-          rawDataDeferred.reject( error )
-         
-        #load raw data from uri/file, get a promise
-        rawDataDeferred.promise
-        .then (loadedResource) =>
-          resource.fetched = true
-          deferred.notify( {parsing:0} )
-          resource.rawData = if keepRawData then loadedResource else null
+          resourceDeferred.reject( error )
+        
+        Q.when loadedResource, (value)=>
+          loadedResource = value
+          resource.data = loadedResource
+          resource.loaded = true
 
-          resourceDeferred = parser.parse loadedResource, parseOptions
-          loadedResource = resourceDeferred.promise
+          if not transient #if we are meant to hold on to this resource, cache it
+            @assetCache[ fileUri ] = resource
           
-          deferred.promise.fail ( error ) =>
-            resourceDeferred.reject( error )
+          deferred.resolve resource
+
+      .progress ( progress ) =>
+          logger.debug "got some progress", JSON.stringify(progress)
+          if "fetching" of progress
+            resource.fetchProgress = progress.fetching
+          if "parsing" of progress
+            resource.parseProgress = progress.parsing
+          deferred.notify( progress )
+          resource.size = progress.total
           
-          Q.when loadedResource, (value)=>
-            loadedResource = value
-            resource.data = loadedResource
-            resource.loaded = true
-
-            if not transient #if we are meant to hold on to this resource, cache it
-              @assetCache[ fileUri ] = resource
-            
-            deferred.resolve resource
-
-        .progress ( progress ) =>
-            logger.debug "got some progress", JSON.stringify(progress)
-            if "fetching" of progress
-              resource.fetchProgress = progress.fetching
-            if "parsing" of progress
-              resource.parseProgress = progress.parsing
-            deferred.notify( progress )
-            resource.size = progress.total
-            
-        .fail (error) =>
-           logger.error("failure in data reading step",error) 
-           fetchError = new Error( error.message )
-           fetchError.name = "fetchError";
-           resource.error = fetchError
-           
-           deferred.reject resource
       .fail (error) =>
-        logger.error("failure in getting parser",error) 
-        parserNotFoundError = new Error( "No parser found for #{extension} file format" )
-        parserNotFoundError.name = "parserNotFoundError"
-        resource.error = parserNotFoundError
-        deferred.reject resource
+         logger.error("failure in data reading step",error) 
+         fetchError = new Error( error.message )
+         fetchError.name = "fetchError";
+         resource.error = fetchError
+         
+         deferred.reject resource
     else
       #the resource was already loaded, return it 
       logger.info( "resource already in cache, returning cached version" )
@@ -174,22 +176,6 @@ class AssetManager
       return loadedResource
       
     return resource
-
-  _loadParser:( extension )=>
-    parser = @parsers[ extension ]
-    parserDeferred = Q.defer()
-    if not parser
-      parserName = extension.toUpperCase()+"Parser"
-      parserPromise = requireP( parserName )
-      parserPromise.then (parserKlass) =>
-        parser = new parserKlass()
-        @parsers[ extension ] = parser
-        parserDeferred.resolve( parser )
-      .fail (error)->
-        parserDeferred.reject( error )
-    else
-      parserDeferred.resolve( parser )
-    return parserDeferred.promise
 
   ###*** 
   *remove resource from cached assets
@@ -222,17 +208,6 @@ class AssetManager
     return store.stats( fileUri )
     
 
-  ###***
-  *load project (folder): TODO: should this be here ??
-  * @param {string} uri: folder/url path
-  ###
-  loadProject:( uri )->
-    deferred = Q.defer()
-    storeName = @_parseStoreName( uri )
-    
-    return deferred.promise
-    
-  
   clearResources:()->
     #deferred.reject()  while (deferred = @assetCache.pop())?
     
@@ -243,6 +218,16 @@ class AssetManager
       delete @assetCache[k]
       
     @assetCache = {};
+    
+  ###***
+  *load project (folder): TODO: should this be here ??
+  * @param {string} uri: folder/url path
+  ###
+  loadProject:( uri )->
+    deferred = Q.defer()
+    storeName = @_parseStoreName( uri )
+    
+    return deferred.promise
   
   
 module.exports = AssetManager
