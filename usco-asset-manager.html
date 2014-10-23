@@ -12,7 +12,8 @@
   <script>Polymer('usco-asset-manager',{
       storesTimeout:0,
       logLevel:"warn",
-      created:function()
+      _cleanupRequested: false,//internal flag, for cleanup on detached
+      attached:function()
       {
         var AssetManager = require("asset-manager");
         this.assetManager = new AssetManager();
@@ -20,7 +21,7 @@
       },
       detached:function()
       {
-        this.assetManager = null;
+        this._cleanupRequested = true;
       },
       //attriube change handlers
       logLevelChanged:function(oldLogLevel, newLogLevel)
@@ -53,14 +54,17 @@
       removeStore: function( storeElement )
       {
         this.assetManager.removeStore( this._getExtension( storeElement ), storeElement.store );
+        this._cleanup();
       },
-      removeParser: function( parser )
+      removeParser: function( parserElement )
       {
         this.assetManager.removeParser( this._getExtension( parserElement ), parserElement.parser );
+        this._cleanup();
       },
       removeSerializer: function( serializer )
       {
         this.assetManager.removeSerializer( this._getExtension( serializerElement ), serializerElement.serializer );
+        this._cleanup();
       },
       loadResource:function( uri, options )
       {
@@ -74,6 +78,23 @@
         return this.assetManager.clearResources( );
       },
       //helpers
+      _cleanup:function()
+      {
+        if(this._cleanupRequested)
+        {
+          var stores = Object.keys( this.assetManager.parsers ).length;
+          if(stores > 0) return;
+          
+          var parsers = Object.keys( this.assetManager.parsers ).length;
+          if(parsers > 0) return;
+          
+          var serializers = Object.keys( this.assetManager.serializers ).length;
+          if(serializers > 0) return;
+          
+          //console.log("ALL DONE, cleaning up !");
+          this.assetManager = null;
+        }
+      },
       _getExtension:function( element )
       {
         var extension = element.localName.split("-").shift();

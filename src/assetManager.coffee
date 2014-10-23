@@ -48,6 +48,19 @@ class AssetManager
   addSerializer:( extension, serializer )=>
     #add a serializer
     @serializers[extension] = serializer
+    
+    
+  removeStore:( name, store )=>
+    #remove a store
+    delete @stores[name]
+
+  removeParser:( extension, parser )=>
+    #add a parser
+    delete @parsers[extension]
+
+  removeSerializer:( extension, serializer )=>
+    #add a serializer
+    delete @serializers[extension]
   
   ###* 
    * fileUri : path to the file, starting with the node prefix
