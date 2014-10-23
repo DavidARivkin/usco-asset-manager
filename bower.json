@@ -9,9 +9,7 @@
     "element"
   ],
   "dependencies": {
-    "platform": "Polymer/platform#master",
     "polymer": "Polymer/polymer#master",
-
     "usco-client-deps":    "usco/usco-client-deps#master"
   }
 }
