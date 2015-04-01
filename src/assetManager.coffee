@@ -2,7 +2,6 @@
 Q = require 'q'
 detectEnv = require "composite-detect"
 
-requireP = require "./requirePromise"
 Resource = require "./resource.coffee"
 pathUtils= require "./pathUtils.coffee"
 

@@ -11,6 +11,18 @@ module.exports = (grunt) ->
           transform: ["coffeeify"]
           external: ["path", "url", "composite-detect", "q", "minilog"]
           alias: ["./src/assetManager.coffee:asset-manager"]
+    coffee:
+      coffee_to_js:
+        options:
+          bare: true
+          sourceMap: true
+        expand: true
+        flatten: true
+        cwd: "src"
+        src: ["**/*.coffee"]
+        dest: 'dist'
+        ext: ".js"
+
     bump:
       options:
         files: ['package.json','bower.json']
@@ -27,6 +39,8 @@ module.exports = (grunt) ->
 
   grunt.loadNpmTasks "grunt-browserify"
   grunt.loadNpmTasks "grunt-bump"
-  
+  grunt.loadNpmTasks('grunt-contrib-coffee');
+
   # Task(s).
   grunt.registerTask "build-browser-lib", ["browserify"]
+  grunt.registerTask "build-dist", ["coffee"]
