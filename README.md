@@ -14,10 +14,13 @@ usco-asset-manager.html
 
 Notes about stores, parsers, serializers:
 -----------------------------------------
+
 Parsers:
 =======
   - all parsers should have a parse() method that returns a deferred 
 that gets resolved with the parsed data 
+
+  
 
 Serializers:
 ============

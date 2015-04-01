@@ -49,7 +49,6 @@ class AssetManager
     #add a serializer
     @serializers[extension] = serializer
     
-    
   removeStore:( name, store )=>
     #remove a store
     delete @stores[name]
@@ -68,6 +67,7 @@ class AssetManager
    *  options.parentUri : string : not sure we should have this here : for relative path resolution
    *  options.transient : boolean : if true, don't store the resource in cache, default;false
    *  options.keepRawData: boolean: if true, keep a copy of the original data (un-parsed)
+   *  options.noParse: boolean: if true, do not attempt to parse the raw data
    * 
    * If no store is specified, file paths are expected to be relative
   ###
@@ -78,6 +78,7 @@ class AssetManager
     parentUri     = options.parentUri or null
     transient     = options.transient or false
     keepRawData   = options.keepRawData or false 
+    noParse       = options.noParse or false 
     fetchOptions  = options.fetching or {}
     parseOptions  = options.parsing or {}
     
@@ -87,18 +88,22 @@ class AssetManager
       deferred.reject( "Invalid file name : #{fileUri}" )
       return deferred
 
-    if File? and fileUri instanceof File
-      [storeName,filename] = ["desktop", fileUri.name]
-      file = fileUri
-      fileUri = fileUri.name
-    else
-      #resolve full path
-      fileUri = pathUtils.toAbsoluteUri(fileUri, parentUri)
-      [storeName,filename] = pathUtils.parseFileUri( fileUri, parentUri)
+    try
+      if File? and fileUri instanceof File #determine if we are dealing with an HTML5 File instance
+        [storeName,filename] = ["desktop", fileUri.name]
+        file = fileUri
+        _file = fileUri;
+        fileUri = fileUri.name
+      else
+        #resolve full path
+        fileUri = pathUtils.toAbsoluteUri(fileUri, parentUri)
+        [storeName,filename] = pathUtils.parseFileUri( fileUri, parentUri)
+    catch error
+      deferred.reject(error)
+    #TODO: how to hanlde this ??
      
    
     logger.info( "Attempting to load :", filename,  "from store:", storeName )
-    console.log("here");
 
     #STEP3: no errors yet : fetch the data
     #STEP4: no errors yet : parse the data, return resouce
@@ -106,6 +111,9 @@ class AssetManager
     resource = new Resource( fileUri )
     resource.deferred = deferred
     extension = resource.ext
+    
+    if _file? 
+      resource._file = _file #FIXME; a bit of a hack: for future uploads we keep the original file?
     
     #get store instance , if it exists
     store = @stores[ storeName ]
@@ -117,6 +125,8 @@ class AssetManager
       resource.error = storeNotFoundError
       return resource
     
+    
+    #if not noParse
     #get parser instance , if it exists
     parser = @parsers[ extension ]
     if not parser
