@@ -9,7 +9,7 @@
   "directories": {
     "lib": "./lib"
   },
-  "main": "./dist/assetManager.js",
+  "main": "./src/assetManager.js",
   "dependencies": {
     "q": "~0.9.6",
     "composite-detect": "0.0.3",
