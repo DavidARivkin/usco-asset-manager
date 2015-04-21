@@ -1,7 +1,7 @@
 'use strict';
 
 import Q from 'q'
-import pathUtils from './pathUtils'
+import * as pathUtils from './pathUtils'
 import Resource from './resource'
 import logger from 'log-minim'
 
