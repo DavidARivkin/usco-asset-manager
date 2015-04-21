@@ -214,6 +214,14 @@ class AssetManager{
     }
   }
 
+  /*remove resource, cancel any pending deferreds*/
+  dismissResource(resource){
+    if(!resource) log.warn("No resource to dismiss")
+    if(resource.deferred) resource.deferred.reject("cancelling");
+    this.unLoad( resource.uri );
+  }
+
+
   save(fileUri) {}
 
   delete(fileUri) {}
