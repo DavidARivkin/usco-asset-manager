@@ -78,17 +78,19 @@ class AssetManager{
       return deferred;
     }
     try {
-      if ((typeof File !== "undefined" && File !== null) && fileUri instanceof File) {
-        ref = ["desktop", fileUri.name], storeName = ref[0], filename = ref[1];
+      if ((typeof File !== "undefined" && File !== null) && fileUri instanceof File) 
+      {
+        [storeName,filename] = ["desktop", fileUri.name];
+        //ref = ["desktop", fileUri.name], storeName = ref[0], filename = ref[1];
         file = fileUri;
         _file = fileUri;
         fileUri = fileUri.name;
-      } else {
+      } else 
+      {
         fileUri = pathUtils.toAbsoluteUri(fileUri, parentUri);
         ref1 = pathUtils.parseFileUri(fileUri, parentUri), storeName = ref1[0], filename = ref1[1];
       }
-    } catch (_error) {
-      error = _error;
+    } catch (error) {
       deferred.reject(error);
     }
 
@@ -97,6 +99,7 @@ class AssetManager{
     resource = new Resource(fileUri);
     resource.deferred = deferred;
     extension = resource.ext;
+
     if (_file != null) {
       resource._file = _file;//FIXME; a bit of a hack: for future uploads we keep the original file?
     }
@@ -166,7 +169,6 @@ class AssetManager{
         });
 
         Q.when(loadedResource, function(value) {
-            console.log("BORDEL")
             loadedResource = value;
             resource.data = loadedResource;
             resource.loaded = true;
